@@ -95,7 +95,7 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
 fonts:
-  - family: Roboto
+  - family: RobotoMono
     fonts:
       - asset: assets/fonts/RobotoMono-VariableFont_wght.ttf
         weight: 400

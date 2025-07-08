@@ -276,7 +276,7 @@ class NotificationService {
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
-        sound: 'default.wav',
+        sound: 'custom_sound.wav',
       );
 
       // Combined notification details

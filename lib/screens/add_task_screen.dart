@@ -164,11 +164,12 @@ class _AddTaskScreenState extends State<AddTaskScreen>
       if (_reminderTime != null && _reminderTime!.isAfter(DateTime.now())) {
         final success = await NotificationService.instance.scheduleNotification(
           id: task.id!,
-          title: 'Task Reminder',
-          body: task.title,
+          title: task.title,
+          body: task.description,
           scheduledTime: _reminderTime!,
           payload: 'task_${task.id}',
           isAlarmStyle: _isAlarmStyle,
+
         );
 
         if (success) {
