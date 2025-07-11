@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task_model.dart';
-import '../screens/home_screen.dart';
+import '../screens/task_screen.dart';
 import '../services/theme_service.dart';
 
 class TaskItem extends StatefulWidget {

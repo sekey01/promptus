@@ -102,7 +102,7 @@ class DatabaseService {
     );
   }
 
-  // EXPENSE METHODS (new)
+  // EXPENSE METHODS (existing)
   Future<List<Expense>> getExpenses() async {
     final db = await database;
     final data = await db.query(
@@ -136,7 +136,7 @@ class DatabaseService {
     );
   }
 
-  // ANALYTICS METHODS
+  // ANALYTICS METHODS (existing)
   Future<double> getTotalExpenses() async {
     final db = await database;
     final result = await db.rawQuery('SELECT SUM(amount) as total FROM expenses');
@@ -167,5 +167,54 @@ class DatabaseService {
         [startOfMonth.millisecondsSinceEpoch, endOfMonth.millisecondsSinceEpoch]
     );
     return (result.first['total'] as double?) ?? 0.0;
+  }
+
+  // NEW: Account deletion method
+  Future<void> deleteAllUserData() async {
+    final db = await database;
+
+    // Start a database transaction to ensure all deletions succeed or fail together
+    await db.transaction((txn) async {
+      // Delete all tasks
+      await txn.delete('tasks');
+
+      // Delete all expenses
+      await txn.delete('expenses');
+
+      // Reset the auto-increment counters (optional but recommended)
+      await txn.delete('sqlite_sequence', where: "name = 'tasks'");
+      await txn.delete('sqlite_sequence', where: "name = 'expenses'");
+    });
+  }
+
+  // NEW: Alternative method to completely delete and recreate the database
+  Future<void> resetDatabase() async {
+    final databaseDirPath = await getDatabasesPath();
+    final databasePath = join(databaseDirPath, 'promptus.db');
+
+    // Close current database connection
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+
+    // Delete the database file
+    await deleteDatabase(databasePath);
+
+    // Reinitialize the database
+    _db = await init();
+  }
+
+  // NEW: Method to get total count of all data (useful for verification)
+  Future<Map<String, int>> getDataCounts() async {
+    final db = await database;
+
+    final tasksCount = await db.rawQuery('SELECT COUNT(*) as count FROM tasks');
+    final expensesCount = await db.rawQuery('SELECT COUNT(*) as count FROM expenses');
+
+    return {
+      'tasks': (tasksCount.first['count'] as int?) ?? 0,
+      'expenses': (expensesCount.first['count'] as int?) ?? 0,
+    };
   }
 }

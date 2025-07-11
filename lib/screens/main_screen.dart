@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/theme_model.dart';
 import 'add_expenses_screen.dart';
-import 'home_screen.dart';
+import 'task_screen.dart';
 import 'expenses_screen.dart';
 import 'add_task_screen.dart';
 import 'profile_screen.dart';
@@ -60,13 +60,13 @@ class _MainScreenState extends State<MainScreen>
       // Tasks tab - navigate to Add Task
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const AddTaskScreen()),
+        MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
       );
     } else {
       // Expenses tab - navigate to Add Expense
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
+        MaterialPageRoute(builder: (context) => const AddTaskScreen()),
       );
     }
   }
@@ -171,11 +171,12 @@ class _MainScreenState extends State<MainScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.task_alt_rounded,
+                        Icons.account_balance_wallet_rounded,
+
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text('Tasks'),
+                      const Text('Expenses'),
                     ],
                   ),
                 ),
@@ -184,11 +185,12 @@ class _MainScreenState extends State<MainScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.account_balance_wallet_rounded,
+                        Icons.task_alt_rounded,
+
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text('Expenses'),
+                      const Text('Tasks'),
                     ],
                   ),
                 ),
@@ -200,8 +202,8 @@ class _MainScreenState extends State<MainScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          HomeScreen(themeModel: widget.themeModel),
           ExpensesScreen(themeModel: widget.themeModel),
+          TaskScreen(themeModel: widget.themeModel),
         ],
       ),
       floatingActionButton: AnimatedBuilder(
@@ -228,7 +230,7 @@ class _MainScreenState extends State<MainScreen>
                   size: 24,
                 ),
                 label: Text(
-                  _selectedIndex == 0 ? 'Add Task' : 'Add Expense',
+                  _selectedIndex == 0 ? 'Add Expense' : 'Add Task',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,

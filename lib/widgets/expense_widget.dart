@@ -272,6 +272,12 @@ class ExpenseItem extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
+                      ],
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
                         Icon(
                           Icons.access_time_rounded,
                           size: 12,
@@ -286,7 +292,7 @@ class ExpenseItem extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
+                    )
                   ],
                 ),
               ),
