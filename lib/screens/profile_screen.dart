@@ -786,7 +786,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             child: Icon(
                               Icons.info_outline,
                               color: Theme.of(context).colorScheme.primary,
-                              size: 22,
+                              size: 24,
                             ),
                           ),
                           title: const Text(
@@ -937,11 +937,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             color: color,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         Text(
           title,
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 12,
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             fontWeight: FontWeight.w500,
           ),
