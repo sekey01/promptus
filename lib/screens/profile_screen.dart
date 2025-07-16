@@ -941,7 +941,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Text(
           title,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 10,
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             fontWeight: FontWeight.w500,
           ),
