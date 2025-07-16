@@ -786,7 +786,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             child: Icon(
                               Icons.info_outline,
                               color: Theme.of(context).colorScheme.primary,
-                              size: 24,
+                              size: 22,
                             ),
                           ),
                           title: const Text(
