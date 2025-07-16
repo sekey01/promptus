@@ -118,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Edit Name'),
         content: TextField(
           controller: _nameController,
@@ -139,7 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ElevatedButton(
             onPressed: _saveUserName,
             style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Save'),
           ),
@@ -148,13 +148,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // NEW: Account deletion confirmation dialog
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(
@@ -211,7 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Delete Account'),
           ),
@@ -220,7 +219,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // NEW: Account deletion implementation
   Future<void> _deleteAccount() async {
     try {
       // Show loading indicator
@@ -260,7 +258,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
 
       // Navigate back to main screen or onboarding
-      // You might want to navigate to a welcome/onboarding screen instead
       Navigator.popUntil(context, (route) => route.isFirst);
 
     } catch (e) {
@@ -300,7 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(
@@ -343,7 +340,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               Text('• Expense tracking with categories'),
               Text('• Smart notifications & alarms'),
               Text('• Analytics & insights'),
-              Text('• Dark/Light theme support'),
               Text('• Progress tracking'),
               SizedBox(height: 16),
               Text(
@@ -366,34 +362,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Future<void> _toggleTheme() async {
-    await widget.themeModel.toggleTheme();
-    setState(() {});
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              widget.themeModel.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Switched to ${widget.themeModel.isDarkMode ? 'Dark' : 'Light'} theme',
-            ),
-          ],
-        ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -411,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           'Profile',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 24,
+            fontSize: 26,
             letterSpacing: -0.5,
             color: Theme.of(context).colorScheme.onSurface,
           ),
@@ -435,55 +403,63 @@ class _ProfileScreenState extends State<ProfileScreen>
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Profile Header Card
+                // Enhanced Profile Header Card
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
                         Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                        Theme.of(context).colorScheme.primary.withOpacity(0.9),
                         Theme.of(context).colorScheme.secondary,
                       ],
-                      stops: const [0.0, 0.5, 1.0],
+                      stops: const [0.0, 0.6, 1.0],
                     ),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                        blurRadius: 25,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
+                          border: Border.all(color: Colors.white, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
                         ),
                         child: CircleAvatar(
-                          radius: 50,
+                          radius: 55,
                           backgroundColor: Colors.white.withOpacity(0.2),
                           child: Icon(
                             Icons.person,
-                            size: 50,
+                            size: 55,
                             color: Colors.white,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Text(
                         _userName,
                         style: const TextStyle(
-                          fontSize: 24,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
+                          letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -492,9 +468,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: _showEditNameDialog,
                         icon: const Icon(Icons.edit, size: 20),
@@ -502,18 +479,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: Theme.of(context).colorScheme.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(15),
                           ),
+                          elevation: 5,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Quick Stats Row
+                // Enhanced Quick Stats Row
                 Row(
                   children: [
                     Expanded(
@@ -524,7 +502,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: _buildStatCard(
                         'Expenses',
@@ -533,7 +511,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         Colors.purple,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: _buildStatCard(
                         'Completed',
@@ -544,58 +522,59 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Analytics Navigation Button
+                // Enhanced Analytics Navigation Button
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Colors.orange.shade400, Colors.deepOrange.shade500],
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
+                        color: Colors.orange.withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
                   child: ElevatedButton.icon(
                     onPressed: _navigateToDemographics,
-                    icon: const Icon(Icons.analytics_rounded, size: 24),
+                    icon: const Icon(Icons.analytics_rounded, size: 26),
                     label: const Text(
                       'View Analytics & Demographics',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       foregroundColor: Colors.white,
                       shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(22),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Quick Overview Card
+                // Enhanced Quick Overview Card
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).shadowColor.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
+                        color: Theme.of(context).shadowColor.withOpacity(0.15),
+                        blurRadius: 25,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -605,27 +584,28 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               Icons.dashboard_rounded,
                               color: Theme.of(context).colorScheme.primary,
-                              size: 20,
+                              size: 24,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 16),
                           Text(
                             'Quick Overview',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -652,209 +632,232 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Settings Card
+                // Enhanced Account Management Section
                 Container(
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).shadowColor.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
+                        color: Theme.of(context).shadowColor.withOpacity(0.15),
+                        blurRadius: 25,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
                   child: Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(24),
                         child: Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.settings,
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Settings & Preferences',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            widget.themeModel.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        title: const Text('Theme'),
-                        subtitle: Text(
-                          widget.themeModel.isDarkMode ? 'Dark Mode' : 'Light Mode',
-                        ),
-                        trailing: Switch(
-                          value: widget.themeModel.isDarkMode,
-                          onChanged: (value) => _toggleTheme(),
-                          activeColor: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.info_outline,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        title: const Text('About Promptus'),
-                        subtitle: const Text('App info and version details'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: _showAboutDialog,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // NEW: Account Management Section
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context).shadowColor.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.red.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
                                 Icons.manage_accounts_rounded,
                                 color: Colors.red.shade600,
-                                size: 20,
+                                size: 24,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 16),
                             Text(
                               'Account Management',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+                        child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.red.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.red.withOpacity(0.1),
+                              width: 1,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.delete_forever_rounded,
-                            color: Colors.red.shade600,
+                          child: ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.delete_forever_rounded,
+                                color: Colors.red.shade600,
+                                size: 24,
+                              ),
+                            ),
+                            title: Text(
+                              'Delete Account',
+                              style: TextStyle(
+                                color: Colors.red.shade600,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Permanently delete your account and all data',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                            trailing: Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 18,
+                              color: Colors.red.shade600,
+                            ),
+                            onTap: _showDeleteAccountDialog,
                           ),
                         ),
-                        title: Text(
-                          'Delete Account',
-                          style: TextStyle(
-                            color: Colors.red.shade600,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: const Text('Permanently delete your account and all data'),
-                        trailing: Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: Colors.red.shade600,
-                        ),
-                        onTap: _showDeleteAccountDialog,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // App Info Card
+                // Enhanced About Section
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).shadowColor.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
+                        color: Theme.of(context).shadowColor.withOpacity(0.15),
+                        blurRadius: 25,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
                   child: Column(
                     children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.info_outline_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            'About Promptus',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       Container(
-                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.info_outline,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 24,
+                            ),
+                          ),
+                          title: const Text(
+                            'App Information',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: const Text('Version, features and details'),
+                          trailing: Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          onTap: _showAboutDialog,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // Enhanced App Brand Card
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                        Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          Icons.task_alt,
-                          size: 48,
+                          Icons.task_alt_rounded,
+                          size: 52,
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Text(
                         'Promptus',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         'Stay organized, stay productive',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontStyle: FontStyle.italic,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
@@ -871,33 +874,41 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: color.withOpacity(0.2),
-          width: 1,
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 12),
           Text(
             value,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             title,
             style: TextStyle(
               fontSize: 12,
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),
@@ -909,22 +920,30 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildOverviewItem(String title, String value, IconData icon, Color color) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 12),
         Text(
           value,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: color,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           title,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            fontWeight: FontWeight.w500,
           ),
           textAlign: TextAlign.center,
         ),

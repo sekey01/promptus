@@ -164,7 +164,7 @@ class NotificationService {
           AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidImplementation != null) {
-        permissionGranted = await androidImplementation.requestNotificationsPermission() ?? false;
+        permissionGranted = await androidImplementation.requestPermission() ?? false;
         print('Android notification permission granted: $permissionGranted');
       }
     } else if (Platform.isIOS) {
@@ -208,7 +208,7 @@ class NotificationService {
 
       if (iosImplementation != null) {
         try {
-          final settings = await iosImplementation.checkPermissions();
+          final settings = await iosImplementation.getActiveNotifications();
           print('iOS notification settings: ${settings.toString()}');
 
           // For iOS, we'll assume permissions are granted if request was successful
@@ -440,7 +440,7 @@ class NotificationService {
 
       if (iosImplementation != null) {
         try {
-          final settings = await iosImplementation.checkPermissions();
+          final settings = await iosImplementation.requestPermissions();
           print('Detailed iOS settings: ${settings.toString()}');
         } catch (e) {
           print('Error getting iOS settings: $e');

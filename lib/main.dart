@@ -46,8 +46,8 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'Promptus',
       theme: ThemeService.lightTheme,
-      darkTheme: ThemeService.darkTheme,
-      themeMode: _themeModel.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      //darkTheme: ThemeService.darkTheme,
+      themeMode: ThemeMode.light,
       home: SplashScreen(themeModel: _themeModel), // Changed from MainScreen to SplashScreen
       debugShowCheckedModeBanner: false,
     );
