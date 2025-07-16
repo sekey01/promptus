@@ -937,7 +937,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             color: color,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         Text(
           title,
           style: TextStyle(
