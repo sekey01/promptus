@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/theme_model.dart';
 import '../services/database_service.dart';
 
 class DemographicsScreen extends StatefulWidget {
-  final ThemeModel themeModel;
 
-  const DemographicsScreen({Key? key, required this.themeModel}) : super(key: key);
+  const DemographicsScreen({Key? key}) : super(key: key);
 
   @override
   _DemographicsScreenState createState() => _DemographicsScreenState();
@@ -79,17 +79,19 @@ class _DemographicsScreenState extends State<DemographicsScreen>
     setState(() => _isLoading = true);
 
     try {
-      final tasks = await DatabaseService.instance.getTasks();
-      final expenses = await DatabaseService.instance.getExpenses();
+      final tasks = await DatabaseService.instance.loadTasks();
+      final expenses = await DatabaseService.instance.loadExpenses();
       final totalAmount = await DatabaseService.instance.getTotalExpenses();
       final monthlyAmount = await DatabaseService.instance.getMonthlyExpenses();
       final categories = await DatabaseService.instance.getExpensesByCategory();
+      final db = Provider.of<DatabaseService>(context, listen: false);
+
 
       setState(() {
-        _totalTasks = tasks.length;
-        _completedTasks = tasks.where((task) => task.isCompleted).length;
-        _pendingTasks = tasks.where((task) => !task.isCompleted).length;
-        _totalExpenses = expenses.length;
+        _totalTasks = db.tasks.length;
+        _completedTasks = db.tasks.where((task) => task.isCompleted).length;
+        _pendingTasks = db.tasks.where((task) => !task.isCompleted).length;
+        _totalExpenses = db.expenses.length;
         _totalExpenseAmount = totalAmount;
         _monthlyExpenseAmount = monthlyAmount;
         _categoryTotals = categories;

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:promptus/services/theme_service.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/theme_model.dart';
 import '../services/database_service.dart';
 import 'demographics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final ThemeModel themeModel;
 
-  const ProfileScreen({Key? key, required this.themeModel}) : super(key: key);
+  const ProfileScreen({Key? key}) : super(key: key);
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -70,15 +71,17 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadBasicStatistics() async {
-    final tasks = await DatabaseService.instance.getTasks();
-    final expenses = await DatabaseService.instance.getExpenses();
+    final db = Provider.of<DatabaseService>(context, listen: false);
+
+    // final tasks = await DatabaseService.instance.loadExpenses();
+   // final expenses = await DatabaseService.instance.loadExpenses();
     final totalAmount = await DatabaseService.instance.getTotalExpenses();
 
     setState(() {
-      _totalTasks = tasks.length;
-      _completedTasks = tasks.where((task) => task.isCompleted).length;
-      _pendingTasks = tasks.where((task) => !task.isCompleted).length;
-      _totalExpenses = expenses.length;
+      _totalTasks = db.tasks.length;
+      _completedTasks = db.tasks.where((task) => task.isCompleted).length;
+      _pendingTasks = db.tasks.where((task) => !task.isCompleted).length;
+      _totalExpenses = db.expenses.length;
       _totalExpenseAmount = totalAmount;
     });
   }
@@ -288,7 +291,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DemographicsScreen(themeModel: widget.themeModel),
+        builder: (context) => DemographicsScreen(),
       ),
     );
   }

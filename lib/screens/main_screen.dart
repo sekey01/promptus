@@ -8,9 +8,8 @@ import 'add_task_screen.dart';
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  final ThemeModel themeModel;
 
-  const MainScreen({Key? key, required this.themeModel}) : super(key: key);
+  const MainScreen({Key? key}) : super(key: key);
 
   @override
   _MainScreenState createState() => _MainScreenState();
@@ -110,7 +109,7 @@ class _MainScreenState extends State<MainScreen>
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProfileScreen(themeModel: widget.themeModel),
+                    builder: (context) => ProfileScreen(),
                   ),
                 );
               },
@@ -202,8 +201,8 @@ class _MainScreenState extends State<MainScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          ExpensesScreen(themeModel: widget.themeModel),
-          TaskScreen(themeModel: widget.themeModel),
+          ExpensesScreen(),
+          TaskScreen(),
         ],
       ),
       floatingActionButton: AnimatedBuilder(

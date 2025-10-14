@@ -1,29 +1,41 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/task_model.dart';
 import '../models/expense_model.dart';
 
-class DatabaseService {
-  static final DatabaseService instance = DatabaseService._constructor();
+class DatabaseService extends ChangeNotifier {
+  // Singleton instance (so the same DB is used everywhere)
+  static final DatabaseService instance = DatabaseService._internal();
   static Database? _db;
 
-  DatabaseService._constructor();
+  // Private constructor
+  DatabaseService._internal();
 
+  // Internal caches (to trigger UI updates on change)
+  List<Task> _tasks = [];
+  List<Expense> _expenses = [];
+
+  // Getters to expose data
+  List<Task> get tasks => _tasks;
+  List<Expense> get expenses => _expenses;
+
+  // Database getter
   Future<Database> get database async {
     if (_db != null) return _db!;
-    _db = await init();
+    _db = await _init();
     return _db!;
   }
 
-  Future<Database> init() async {
-    final databaseDirPath = await getDatabasesPath();
-    final databasePath = join(databaseDirPath, 'promptus.db');
+  // Initialize database
+  Future<Database> _init() async {
+    final dbDir = await getDatabasesPath();
+    final path = join(dbDir, 'promptus.db');
 
     return await openDatabase(
-      databasePath,
-      version: 2, // Incremented version for new table
+      path,
+      version: 2,
       onCreate: (db, version) async {
-        // Create tasks table
         await db.execute('''
           CREATE TABLE tasks(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +48,6 @@ class DatabaseService {
           )
         ''');
 
-        // Create expenses table
         await db.execute('''
           CREATE TABLE expenses(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +62,6 @@ class DatabaseService {
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          // Add expenses table for existing users
           await db.execute('''
             CREATE TABLE expenses(
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,53 +78,55 @@ class DatabaseService {
     );
   }
 
-  // TASK METHODS (existing)
-  Future<List<Task>> getTasks() async {
+  // ───────────────────────────────
+  // TASK METHODS
+  // ───────────────────────────────
+
+  Future<void> loadTasks() async {
     final db = await database;
-    final data = await db.query(
-      'tasks',
-      orderBy: 'createdAt DESC',
-    );
-    return data.map((e) => Task.fromMap(e)).toList();
+    final data = await db.query('tasks', orderBy: 'createdAt DESC');
+    _tasks = data.map((e) => Task.fromMap(e)).toList();
+    notifyListeners();
   }
 
-  Future<int> insertTask(Task task) async {
+  Future addTask(Task task) async {
     final db = await database;
-    return await db.insert('tasks', task.toMap());
+    await db.insert('tasks', task.toMap());
+    await loadTasks();
+    notifyListeners();
+    return task.id;
   }
 
   Future<void> updateTask(Task task) async {
     final db = await database;
-    await db.update(
-      'tasks',
-      task.toMap(),
-      where: 'id = ?',
-      whereArgs: [task.id],
-    );
+    await db.update('tasks', task.toMap(), where: 'id = ?', whereArgs: [task.id]);
+    await loadTasks();
+    notifyListeners();
   }
 
   Future<void> deleteTask(int id) async {
     final db = await database;
-    await db.delete(
-      'tasks',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('tasks', where: 'id = ?', whereArgs: [id]);
+    await loadTasks();
+    notifyListeners();
   }
 
-  // EXPENSE METHODS (existing)
-  Future<List<Expense>> getExpenses() async {
+  // ───────────────────────────────
+  // EXPENSE METHODS
+  // ───────────────────────────────
+
+  Future loadExpenses() async {
     final db = await database;
-    final data = await db.query(
-      'expenses',
-      orderBy: 'createdAt DESC',
-    );
-    return data.map((e) => Expense.fromMap(e)).toList();
+    final data = await db.query('expenses', orderBy: 'createdAt DESC');
+    _expenses = data.map((e) => Expense.fromMap(e)).toList();
+    notifyListeners();
   }
 
-  Future<int> insertExpense(Expense expense) async {
+  Future<void> addExpense(Expense expense) async {
     final db = await database;
-    return await db.insert('expenses', expense.toMap());
+    await db.insert('expenses', expense.toMap());
+    await loadExpenses();
+    notifyListeners();
   }
 
   Future<void> updateExpense(Expense expense) async {
@@ -125,96 +137,97 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [expense.id],
     );
+    await loadExpenses();
+    notifyListeners();
   }
 
   Future<void> deleteExpense(int id) async {
     final db = await database;
-    await db.delete(
-      'expenses',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('expenses', where: 'id = ?', whereArgs: [id]);
+    await loadExpenses();
+    notifyListeners();
   }
 
-  // ANALYTICS METHODS (existing)
+  // ───────────────────────────────
+  // ANALYTICS METHODS
+  // ───────────────────────────────
+
   Future<double> getTotalExpenses() async {
     final db = await database;
     final result = await db.rawQuery('SELECT SUM(amount) as total FROM expenses');
     return (result.first['total'] as double?) ?? 0.0;
+
   }
 
   Future<Map<String, double>> getExpensesByCategory() async {
     final db = await database;
     final result = await db.rawQuery(
-        'SELECT category, SUM(amount) as total FROM expenses GROUP BY category'
+      'SELECT category, SUM(amount) as total FROM expenses GROUP BY category',
     );
 
-    Map<String, double> categoryTotals = {};
+    Map<String, double> map = {};
     for (var row in result) {
-      categoryTotals[row['category'] as String] = (row['total'] as double?) ?? 0.0;
+      map[row['category'] as String] = (row['total'] as double?) ?? 0.0;
     }
-    return categoryTotals;
+    return map;
   }
 
   Future<double> getMonthlyExpenses() async {
     final db = await database;
     final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0);
+    final start = DateTime(now.year, now.month, 1).millisecondsSinceEpoch;
+    final end = DateTime(now.year, now.month + 1, 0).millisecondsSinceEpoch;
 
     final result = await db.rawQuery(
-        'SELECT SUM(amount) as total FROM expenses WHERE createdAt >= ? AND createdAt <= ?',
-        [startOfMonth.millisecondsSinceEpoch, endOfMonth.millisecondsSinceEpoch]
+      'SELECT SUM(amount) as total FROM expenses WHERE createdAt >= ? AND createdAt <= ?',
+      [start, end],
     );
+
     return (result.first['total'] as double?) ?? 0.0;
   }
 
-  // NEW: Account deletion method
+  // ───────────────────────────────
+  // RESET & DELETE
+  // ───────────────────────────────
+
   Future<void> deleteAllUserData() async {
     final db = await database;
-
-    // Start a database transaction to ensure all deletions succeed or fail together
     await db.transaction((txn) async {
-      // Delete all tasks
       await txn.delete('tasks');
-
-      // Delete all expenses
       await txn.delete('expenses');
-
-      // Reset the auto-increment counters (optional but recommended)
-      await txn.delete('sqlite_sequence', where: "name = 'tasks'");
-      await txn.delete('sqlite_sequence', where: "name = 'expenses'");
+      await txn.delete('sqlite_sequence', where: "name IN ('tasks', 'expenses')");
     });
+    await loadTasks();
+    await loadExpenses();
+    notifyListeners();
   }
 
-  // NEW: Alternative method to completely delete and recreate the database
   Future<void> resetDatabase() async {
-    final databaseDirPath = await getDatabasesPath();
-    final databasePath = join(databaseDirPath, 'promptus.db');
+    final dbDir = await getDatabasesPath();
+    final path = join(dbDir, 'promptus.db');
 
-    // Close current database connection
     if (_db != null) {
       await _db!.close();
       _db = null;
     }
 
-    // Delete the database file
-    await deleteDatabase(databasePath);
+    await deleteDatabase(path);
+    _db = await _init();
 
-    // Reinitialize the database
-    _db = await init();
+    _tasks = [];
+    _expenses = [];
+    notifyListeners();
   }
 
-  // NEW: Method to get total count of all data (useful for verification)
   Future<Map<String, int>> getDataCounts() async {
     final db = await database;
 
-    final tasksCount = await db.rawQuery('SELECT COUNT(*) as count FROM tasks');
-    final expensesCount = await db.rawQuery('SELECT COUNT(*) as count FROM expenses');
+    final taskCount = await db.rawQuery('SELECT COUNT(*) as count FROM tasks');
+    final expenseCount = await db.rawQuery('SELECT COUNT(*) as count FROM expenses');
 
     return {
-      'tasks': (tasksCount.first['count'] as int?) ?? 0,
-      'expenses': (expensesCount.first['count'] as int?) ?? 0,
+      'tasks': (taskCount.first['count'] as int?) ?? 0,
+      'expenses': (expenseCount.first['count'] as int?) ?? 0,
     };
   }
 }

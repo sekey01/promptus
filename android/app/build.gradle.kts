@@ -9,23 +9,22 @@ android {
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
-    compileOptions {
-        // This is the key line that was missing!
-        isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-
     defaultConfig {
         applicationId = "com.example.promptus"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+        isCoreLibraryDesugaringEnabled = true
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 
     buildTypes {
@@ -44,6 +43,8 @@ flutter {
 }
 
 dependencies {
-    // This dependency is required for core library desugaring
+    // Required for desugaring newer Java APIs
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // Flutter automatically manages other dependencies
 }

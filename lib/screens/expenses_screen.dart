@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/expense_model.dart';
 import '../models/theme_model.dart';
 import '../services/database_service.dart';
@@ -7,9 +8,8 @@ import '../widgets/expense_widget.dart';
 import 'add_expenses_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
-  final ThemeModel themeModel;
 
-  const ExpensesScreen({Key? key, required this.themeModel}) : super(key: key);
+  const ExpensesScreen({Key? key}) : super(key: key);
 
   @override
   _ExpensesScreenState createState() => _ExpensesScreenState();
@@ -75,16 +75,17 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   }
 
   Future<void> _loadExpenses() async {
+    final db = Provider.of<DatabaseService>(context, listen: false);
     setState(() => _isLoading = true);
 
     try {
-      final expenses = await DatabaseService.instance.getExpenses();
-      final total = await DatabaseService.instance.getTotalExpenses();
-      final monthly = await DatabaseService.instance.getMonthlyExpenses();
-      final categories = await DatabaseService.instance.getExpensesByCategory();
+      await db.loadExpenses();
+      final total = await db.getTotalExpenses();
+      final monthly = await db.getMonthlyExpenses();
+      final categories = await db.getExpensesByCategory();
 
       setState(() {
-        _expenses = expenses;
+        _expenses = db.expenses;
         _totalExpenses = total;
         _monthlyExpenses = monthly;
         _categoryTotals = categories;

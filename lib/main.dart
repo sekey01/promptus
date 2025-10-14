@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:promptus/screens/splash_screen.dart';
+import 'package:promptus/services/database_service.dart';
+import 'package:promptus/services/notification_service.dart';
+import 'package:provider/provider.dart';
 import 'services/theme_service.dart';
-import 'models/theme_model.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -17,9 +19,11 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Note: We'll move service initialization to splash screen
-  // This keeps the main startup fast
-  runApp(MyApp());
+  runApp(
+    MaterialApp(
+      home: MyApp(),
+    )
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -28,28 +32,33 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  ThemeModel _themeModel = ThemeModel();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTheme();
-  }
-
-  Future<void> _loadTheme() async {
-    await _themeModel.loadTheme();
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Promptus',
-      theme: ThemeService.lightTheme,
-      //darkTheme: ThemeService.darkTheme,
-      themeMode: ThemeMode.light,
-      home: SplashScreen(themeModel: _themeModel), // Changed from MainScreen to SplashScreen
-      debugShowCheckedModeBanner: false,
-    );
+///Add provider here
+        home: MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => ThemeService()),
+            ChangeNotifierProvider<NotificationService>.value(
+              value: NotificationService.instance,
+            ),
+
+            // I use this singleton pattern to ensure the same instance is used app-wide
+            ChangeNotifierProvider<DatabaseService>.value(
+              value: DatabaseService.instance,
+            ),
+          ],
+          child: Consumer<ThemeService>(
+            builder: (context, themeService, child) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                 darkTheme: ThemeService.darkTheme,
+                theme: ThemeService.lightTheme,
+               // theme: themeService.getThemeData(),
+                home: SplashScreen(),
+              );
+            },
+          ),
+        ));
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/expense_model.dart';
 import '../services/database_service.dart';
 
@@ -127,6 +128,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   }
 
   Future<void> _saveExpense() async {
+    final db = Provider.of<DatabaseService>(context, listen: false);
+
     if (_formKey.currentState!.validate()) {
       HapticFeedback.mediumImpact();
 
@@ -142,9 +145,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
       try {
         if (_isEditing) {
-          await DatabaseService.instance.updateExpense(expense);
+          await db.updateExpense(expense);
         } else {
-          await DatabaseService.instance.insertExpense(expense);
+          await db.addExpense(expense);
         }
 
         ScaffoldMessenger.of(context).showSnackBar(

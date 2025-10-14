@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
@@ -7,9 +8,8 @@ import '../models/theme_model.dart';
 import 'main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  final ThemeModel themeModel;
 
-  const SplashScreen({Key? key, required this.themeModel}) : super(key: key);
+  const SplashScreen({Key? key}) : super(key: key);
 
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -129,9 +129,12 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeAppServices() async {
+    final initialize = Provider.of<DatabaseService>(context, listen: false);
+
     try {
       // Initialize database service
-      await DatabaseService.instance.init();
+      //await DatabaseService.instance.init();
+      await initialize.database;
 
       // Initialize notification service
       await NotificationService.instance.init();
@@ -140,7 +143,7 @@ class _SplashScreenState extends State<SplashScreen>
       print('✅ All services initialized successfully');
 
     } catch (e) {
-      print('❌ Error initializing services: $e');
+      print(' Error initializing services: $e');
       // Handle initialization errors gracefully
       // You could show an error dialog or retry logic here
     }
@@ -151,20 +154,17 @@ class _SplashScreenState extends State<SplashScreen>
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: widget.themeModel.isDarkMode
-            ? Brightness.light
-            : Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: widget.themeModel.isDarkMode
-            ? Brightness.light
-            : Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.light
+
       ),
     );
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            MainScreen(themeModel: widget.themeModel),
+            MainScreen(),
         transitionDuration: const Duration(milliseconds: 800),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);

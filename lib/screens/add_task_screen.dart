@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/task_model.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
@@ -141,6 +142,8 @@ class _AddTaskScreenState extends State<AddTaskScreen>
   }
 
   Future<void> _saveTask() async {
+    final db = Provider.of<DatabaseService>(context, listen: false);
+
     if (_formKey.currentState!.validate()) {
       HapticFeedback.mediumImpact();
 
@@ -154,9 +157,9 @@ class _AddTaskScreenState extends State<AddTaskScreen>
       );
 
       if (_isEditing) {
-        await DatabaseService.instance.updateTask(task);
+        await db.updateTask(task);
       } else {
-        final id = await DatabaseService.instance.insertTask(task);
+        final id = await db.addTask(task);
         task.id = id;
       }
 
@@ -740,21 +743,24 @@ class _AddTaskScreenState extends State<AddTaskScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: colorScheme.surface,
         elevation: 0,
+        centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Theme.of(context).brightness == Brightness.dark
-              ? Brightness.light
-              : Brightness.dark,
+          statusBarIconBrightness:
+          theme.brightness == Brightness.dark ? Brightness.light : Brightness.dark,
         ),
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_rounded,
-            color: Theme.of(context).colorScheme.onSurface,
+            color: colorScheme.onSurface,
           ),
           onPressed: () {
             HapticFeedback.lightImpact();
@@ -763,32 +769,30 @@ class _AddTaskScreenState extends State<AddTaskScreen>
         ),
         title: Text(
           _isEditing ? 'Edit Task' : 'Create Task',
-          style: TextStyle(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            fontSize: 24,
-            letterSpacing: -0.5,
-            color: Theme.of(context).colorScheme.onSurface,
+            color: colorScheme.onSurface,
           ),
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
             child: TextButton.icon(
               onPressed: _saveTask,
               icon: Icon(
                 _isEditing ? Icons.update_rounded : Icons.save_rounded,
                 size: 20,
+                color: colorScheme.primary,
               ),
               label: Text(
                 _isEditing ? 'Update' : 'Save',
-                style: const TextStyle(
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  color: colorScheme.primary,
                 ),
               ),
               style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                backgroundColor: colorScheme.primary.withOpacity(0.1),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -798,21 +802,25 @@ class _AddTaskScreenState extends State<AddTaskScreen>
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTaskDetailsCard(),
-              _buildPriorityCard(),
-              _buildReminderCard(),
-              const SizedBox(height: 40), // Extra space for better scrolling
-            ],
+      body: Container(
+        color: colorScheme.surface,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTaskDetailsCard(),
+                _buildPriorityCard(),
+                _buildReminderCard(),
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
 }

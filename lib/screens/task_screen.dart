@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:promptus/services/notification_service.dart';
+import 'package:provider/provider.dart';
 import '../models/task_model.dart';
 import '../models/theme_model.dart';
 import '../services/database_service.dart';
 import '../widgets/task_item.dart';
 import 'add_task_screen.dart';
-import 'profile_screen.dart';
 
 class TaskScreen extends StatefulWidget {
-  final ThemeModel themeModel;
 
-  const TaskScreen({Key? key, required this.themeModel}) : super(key: key);
+  const TaskScreen({Key? key}) : super(key: key);
 
   @override
   _TaskScreenState createState() => _TaskScreenState();
@@ -84,10 +83,10 @@ class _TaskScreenState extends State<TaskScreen>
     }
 
     if (!_isRefreshing) setState(() => _isLoading = true);
-
-    final tasks = await DatabaseService.instance.getTasks();
+    final db = Provider.of<DatabaseService>(context, listen: false);
+    final tasks = await DatabaseService.instance.loadTasks();
     setState(() {
-      _tasks = tasks;
+      _tasks = db.tasks;
       _isLoading = false;
       _isRefreshing = false;
     });
@@ -235,6 +234,10 @@ class _TaskScreenState extends State<TaskScreen>
   }
 
   Widget _buildProgressCard() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     final completedTasks = _tasks.where((task) => task.isCompleted).length;
     final totalTasks = _tasks.length;
     final progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) : 0.0;
@@ -249,32 +252,48 @@ class _TaskScreenState extends State<TaskScreen>
             child: Container(
               margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark
+                    ? colorScheme.surfaceVariant.withOpacity(0.3)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: isDark
+                        ? Colors.black.withOpacity(0.4)
+                        : Colors.black.withOpacity(0.08),
                     blurRadius: 30,
                     offset: const Offset(0, 8),
                     spreadRadius: 0,
                   ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                    spreadRadius: 0,
-                  ),
+                  if (!isDark)
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                      spreadRadius: 0,
+                    ),
                 ],
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.grey.withOpacity(0.08),
+                ),
               ),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primary.withOpacity(0.9),
-                      Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                    colors: isDark
+                        ? [
+                      colorScheme.primary.withOpacity(0.3),
+                      colorScheme.secondary.withOpacity(0.25),
+                      colorScheme.primary.withOpacity(0.15),
+                    ]
+                        : [
+                      colorScheme.primary,
+                      colorScheme.primary.withOpacity(0.9),
+                      colorScheme.secondary.withOpacity(0.8),
                     ],
                     stops: [0.0, 0.6, 1.0],
                   ),
@@ -294,13 +313,17 @@ class _TaskScreenState extends State<TaskScreen>
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.1)
+                                        : Colors.white.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
                                     'Today\'s Progress',
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.95),
+                                      color: isDark
+                                          ? Colors.white.withOpacity(0.9)
+                                          : Colors.white.withOpacity(0.95),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 0.5,
@@ -310,7 +333,7 @@ class _TaskScreenState extends State<TaskScreen>
                                 const SizedBox(height: 16),
                                 Text(
                                   '$completedTasks of $totalTasks',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 32,
                                     fontWeight: FontWeight.w800,
@@ -337,7 +360,7 @@ class _TaskScreenState extends State<TaskScreen>
                             height: 100,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withOpacity(isDark ? 0.05 : 0.1),
                               border: Border.all(
                                 color: Colors.white.withOpacity(0.2),
                                 width: 2,
@@ -355,7 +378,8 @@ class _TaskScreenState extends State<TaskScreen>
                                       return CircularProgressIndicator(
                                         value: progressPercentage * _progressAnimation.value,
                                         backgroundColor: Colors.white.withOpacity(0.2),
-                                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                        const AlwaysStoppedAnimation<Color>(Colors.white),
                                         strokeWidth: 6,
                                         strokeCap: StrokeCap.round,
                                       );
@@ -403,7 +427,12 @@ class _TaskScreenState extends State<TaskScreen>
     );
   }
 
+
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
@@ -418,14 +447,18 @@ class _TaskScreenState extends State<TaskScreen>
                   height: 140,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.grey.shade50,
+                    color: isDark
+                        ? colorScheme.surfaceVariant.withOpacity(0.3)
+                        : colorScheme.surfaceVariant.withOpacity(0.6),
                     border: Border.all(
-                      color: Colors.grey.shade200,
+                      color: colorScheme.outlineVariant.withOpacity(0.2),
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: isDark
+                            ? Colors.black.withOpacity(0.3)
+                            : Colors.black.withOpacity(0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -434,16 +467,17 @@ class _TaskScreenState extends State<TaskScreen>
                   child: Icon(
                     Icons.task_alt_rounded,
                     size: 70,
-                    color: Colors.grey.shade400,
+                    color: isDark
+                        ? colorScheme.onSurfaceVariant.withOpacity(0.4)
+                        : Colors.grey.shade400,
                   ),
                 ),
                 const SizedBox(height: 32),
                 Text(
                   'No Tasks Yet',
-                  style: TextStyle(
-                    fontSize: 28,
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: Colors.grey.shade800,
+                    color: colorScheme.onSurface,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -453,12 +487,10 @@ class _TaskScreenState extends State<TaskScreen>
                   child: Text(
                     'Start your productive day by creating your first task. Every great journey begins with a single step.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade600,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                       height: 1.6,
                       letterSpacing: 0.1,
-                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
@@ -468,7 +500,7 @@ class _TaskScreenState extends State<TaskScreen>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        color: colorScheme.primary.withOpacity(0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -479,7 +511,8 @@ class _TaskScreenState extends State<TaskScreen>
                       HapticFeedback.lightImpact();
                       await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const AddTaskScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const AddTaskScreen()),
                       );
                       _loadTasks();
                     },
@@ -493,9 +526,10 @@ class _TaskScreenState extends State<TaskScreen>
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 18),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -511,7 +545,11 @@ class _TaskScreenState extends State<TaskScreen>
     );
   }
 
+
   Widget _buildTasksList() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
@@ -529,16 +567,25 @@ class _TaskScreenState extends State<TaskScreen>
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark
+                          ? theme.colorScheme.surface.withOpacity(0.95) // Soft dark surface
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
+                          color: isDark
+                              ? Colors.black.withOpacity(0.3)
+                              : Colors.black.withOpacity(0.06),
                           blurRadius: 20,
                           offset: const Offset(0, 4),
                           spreadRadius: 0,
                         ),
                       ],
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.grey.withOpacity(0.1),
+                      ),
                     ),
                     child: TaskItem(
                       task: _tasks[index],
@@ -565,12 +612,16 @@ class _TaskScreenState extends State<TaskScreen>
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final totalTasks = _tasks.length;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: colorScheme.surface,
       body: _isLoading
           ? Center(
         child: Column(
@@ -581,10 +632,14 @@ class _TaskScreenState extends State<TaskScreen>
               height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white,
+                color: isDark
+                    ? colorScheme.surfaceVariant.withOpacity(0.3)
+                    : colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: isDark
+                        ? Colors.black.withOpacity(0.5)
+                        : Colors.black.withOpacity(0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -593,16 +648,16 @@ class _TaskScreenState extends State<TaskScreen>
               child: CircularProgressIndicator(
                 strokeWidth: 3,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
+                  colorScheme.primary,
                 ),
               ),
             ),
             const SizedBox(height: 24),
             Text(
               'Loading your tasks...',
-              style: TextStyle(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontSize: 16,
-                color: Colors.grey.shade600,
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -611,8 +666,8 @@ class _TaskScreenState extends State<TaskScreen>
       )
           : RefreshIndicator(
         onRefresh: _refreshTasks,
-        color: Theme.of(context).colorScheme.primary,
-        backgroundColor: Colors.white,
+        color: colorScheme.primary,
+        backgroundColor: colorScheme.surface,
         displacement: 60,
         strokeWidth: 3,
         child: Column(
@@ -639,10 +694,9 @@ class _TaskScreenState extends State<TaskScreen>
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+              color: colorScheme.primary.withOpacity(0.4),
               blurRadius: 25,
               offset: const Offset(0, 12),
-              spreadRadius: 0,
             ),
           ],
         ),
@@ -664,8 +718,8 @@ class _TaskScreenState extends State<TaskScreen>
               letterSpacing: 0.3,
             ),
           ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -674,4 +728,5 @@ class _TaskScreenState extends State<TaskScreen>
       ),
     );
   }
+
 }

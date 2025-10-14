@@ -22,4 +22,5 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.1.0" apply false
 }
 
+// Only include the app module — no extra modules like ':gradle'
 include(":app")
