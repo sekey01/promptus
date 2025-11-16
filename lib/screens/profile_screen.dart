@@ -671,7 +671,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             const SizedBox(width: 16),
                             Text(
                               'Account Management',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.3,
                               ),

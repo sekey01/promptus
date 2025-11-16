@@ -158,8 +158,10 @@ class _AddTaskScreenState extends State<AddTaskScreen>
 
       if (_isEditing) {
         await db.updateTask(task);
+        await db.loadTasks();
       } else {
         final id = await db.addTask(task);
+        await db.loadTasks();
         task.id = id;
       }
 
@@ -778,7 +780,9 @@ class _AddTaskScreenState extends State<AddTaskScreen>
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: TextButton.icon(
-              onPressed: _saveTask,
+              onPressed: (){_saveTask().then((_) => {
+                FocusScope.of(context).unfocus(),
+              });},
               icon: Icon(
                 _isEditing ? Icons.update_rounded : Icons.save_rounded,
                 size: 20,

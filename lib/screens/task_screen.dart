@@ -84,7 +84,7 @@ class _TaskScreenState extends State<TaskScreen>
 
     if (!_isRefreshing) setState(() => _isLoading = true);
     final db = Provider.of<DatabaseService>(context, listen: false);
-    final tasks = await DatabaseService.instance.loadTasks();
+     await db.loadTasks();
     setState(() {
       _tasks = db.tasks;
       _isLoading = false;
