@@ -1,0 +1,12 @@
+PROMPTUS WAKE WORD SETUP
+========================
+
+1. Go to https://console.picovoice.ai/ and create a free account.
+2. Copy your AccessKey from the console.
+3. Go to "Wake Word" → "Train a custom wake word" → type "Promptus".
+4. Download the Android model file (.ppn).
+5. Rename it to: promptus_android.ppn
+6. Place it in this directory (alongside this file).
+
+The app will automatically detect the file and use it.
+Without it, the service falls back to the built-in "Porcupine" keyword for testing.

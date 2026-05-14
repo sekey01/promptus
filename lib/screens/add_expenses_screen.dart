@@ -1,20 +1,25 @@
+import 'package:iconsax/iconsax.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_shadows.dart';
+import '../core/theme/app_typography.dart';
 import '../models/expense_model.dart';
 import '../services/database_service.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Expense? expense;
 
-  const AddExpenseScreen({Key? key, this.expense}) : super(key: key);
+  const AddExpenseScreen({super.key, this.expense});
 
   @override
-  _AddExpenseScreenState createState() => _AddExpenseScreenState();
+  State<AddExpenseScreen> createState() => _AddExpenseScreenState();
 }
 
-class _AddExpenseScreenState extends State<AddExpenseScreen>
-    with TickerProviderStateMixin {
+class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -22,15 +27,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
   String _selectedCategory = 'Food & Dining';
   int _priority = 1;
-  bool _isEditing = false;
+  late bool _isEditing;
 
-  late AnimationController _animationController;
-  late AnimationController _fadeController;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
-  final List<String> _categories = [
+  static const _categories = [
     'Food & Dining',
     'Transportation',
     'Shopping',
@@ -42,35 +41,22 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     'Other',
   ];
 
-  final Map<String, IconData> _categoryIcons = {
-    'Food & Dining': Icons.restaurant_rounded,
-    'Transportation': Icons.directions_car_rounded,
-    'Shopping': Icons.shopping_bag_rounded,
-    'Entertainment': Icons.movie_rounded,
-    'Bills & Utilities': Icons.receipt_long_rounded,
-    'Healthcare': Icons.local_hospital_rounded,
-    'Education': Icons.school_rounded,
-    'Travel': Icons.flight_rounded,
-    'Other': Icons.category_rounded,
-  };
-
-  final Map<String, Color> _categoryColors = {
-    'Food & Dining': Colors.orange,
-    'Transportation': Colors.blue,
-    'Shopping': Colors.purple,
-    'Entertainment': Colors.red,
-    'Bills & Utilities': Colors.green,
-    'Healthcare': Colors.teal,
-    'Education': Colors.indigo,
-    'Travel': Colors.amber,
-    'Other': Colors.grey,
+  static const _categoryIcons = <String, IconData>{
+    'Food & Dining': Iconsax.shopping_cart,
+    'Transportation': Iconsax.car,
+    'Shopping': Iconsax.bag_2,
+    'Entertainment': Iconsax.music,
+    'Bills & Utilities': Iconsax.receipt_2,
+    'Healthcare': Iconsax.heart,
+    'Education': Iconsax.book_1,
+    'Travel': Iconsax.airplane,
+    'Other': Iconsax.category,
   };
 
   @override
   void initState() {
     super.initState();
     _isEditing = widget.expense != null;
-
     if (_isEditing) {
       _titleController.text = widget.expense!.title;
       _descriptionController.text = widget.expense!.description;
@@ -78,581 +64,88 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       _selectedCategory = widget.expense!.category;
       _priority = widget.expense!.priority;
     }
-
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.9,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutBack,
-    ));
-
-    _animationController.forward();
-    _fadeController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _fadeController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveExpense() async {
+  Color _priorityColor(int p) => p == 3
+      ? AppColors.error
+      : p == 2
+          ? AppColors.warning
+          : AppColors.success;
+
+  String _priorityLabel(int p) => ['', 'Low', 'Medium', 'High'][p.clamp(1, 3)];
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    HapticFeedback.mediumImpact();
     final db = Provider.of<DatabaseService>(context, listen: false);
-
-    if (_formKey.currentState!.validate()) {
-      HapticFeedback.mediumImpact();
-
-      final expense = Expense(
-        id: _isEditing ? widget.expense!.id : null,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        amount: double.parse(_amountController.text),
-        category: _selectedCategory,
-        createdAt: _isEditing ? widget.expense!.createdAt : DateTime.now(),
-        priority: _priority,
-      );
-
-      try {
-        if (_isEditing) {
-          await db.updateExpense(expense);
-        } else {
-          await db.addExpense(expense);
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Text(_isEditing ? 'Expense updated successfully' : 'Expense saved successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-
-        Navigator.pop(context);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving expense: $e'),
-            backgroundColor: Colors.red.shade600,
-          ),
-        );
+    final expense = Expense(
+      id: _isEditing ? widget.expense!.id : null,
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      amount: double.parse(_amountController.text),
+      category: _selectedCategory,
+      createdAt: _isEditing ? widget.expense!.createdAt : DateTime.now(),
+      priority: _priority,
+    );
+    try {
+      if (_isEditing) {
+        await db.updateExpense(expense);
+      } else {
+        await db.addExpense(expense);
       }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(_snack(
+          _isEditing ? 'Expense updated' : 'Expense saved'));
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snack('Error: $e', isError: true));
     }
   }
 
-  String _getPriorityText(int priority) {
-    switch (priority) {
-      case 1:
-        return 'Low';
-      case 2:
-        return 'Medium';
-      case 3:
-        return 'High';
-      default:
-        return 'Low';
-    }
-  }
-
-  Color _getPriorityColor(int priority) {
-    switch (priority) {
-      case 1:
-        return Colors.green;
-      case 2:
-        return Colors.orange;
-      case 3:
-        return Colors.red;
-      default:
-        return Colors.green;
-    }
-  }
-
-  Widget _buildExpenseDetailsCard() {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value.dy * 30),
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.account_balance_wallet_rounded,
-                              color: Colors.purple,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'Expense Details',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _titleController,
-                        decoration: InputDecoration(
-                          labelText: 'Expense Title',
-                          hintText: 'Enter expense description',
-                          prefixIcon: Icon(
-                            Icons.title_rounded,
-                            color: Colors.purple,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Colors.purple,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter an expense title';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(
-                          labelText: 'Amount (₵)',
-                          hintText: 'Enter amount',
-                          prefixIcon: Icon(
-                            Icons.attach_money_rounded,
-                            color: Colors.purple,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Colors.purple,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter an amount';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          if (double.parse(value) <= 0) {
-                            return 'Amount must be greater than 0';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: InputDecoration(
-                          labelText: 'Description (Optional)',
-                          hintText: 'Add more details...',
-                          prefixIcon: Icon(
-                            Icons.description_rounded,
-                            color: Colors.purple,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: Colors.purple,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                        ),
-                        maxLines: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+  SnackBar _snack(String msg, {bool isError = false}) => SnackBar(
+        content: Row(children: [
+          Icon(
+            isError ? Iconsax.close_circle : Iconsax.tick_circle,
+            color: Colors.white,
+            size: 20,
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryCard() {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value.dy * 40),
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: _categoryColors[_selectedCategory]!.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              _categoryIcons[_selectedCategory],
-                              color: _categoryColors[_selectedCategory],
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'Category',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _categories.map((category) {
-                          final isSelected = category == _selectedCategory;
-                          return Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                HapticFeedback.lightImpact();
-                                setState(() => _selectedCategory = category);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? _categoryColors[category]!.withOpacity(0.15)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? _categoryColors[category]!
-                                        : Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                                    width: isSelected ? 2 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _categoryIcons[category],
-                                      size: 16,
-                                      color: isSelected
-                                          ? _categoryColors[category]
-                                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      category,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                        color: isSelected
-                                            ? _categoryColors[category]
-                                            : Theme.of(context).colorScheme.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPriorityCard() {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value.dy * 50),
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: _getPriorityColor(_priority).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.flag_rounded,
-                              color: _getPriorityColor(_priority),
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'Priority Level',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [1, 2, 3].map((priority) {
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () {
-                                    HapticFeedback.lightImpact();
-                                    setState(() => _priority = priority);
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeOutCubic,
-                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: _priority == priority
-                                          ? _getPriorityColor(priority).withOpacity(0.15)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: _priority == priority
-                                            ? _getPriorityColor(priority)
-                                            : Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                                        width: _priority == priority ? 2 : 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        if (_priority == priority) ...[
-                                          Icon(
-                                            Icons.check_circle_rounded,
-                                            color: _getPriorityColor(priority),
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 4),
-                                        ],
-                                        Text(
-                                          _getPriorityText(priority),
-                                          style: TextStyle(
-                                            color: _priority == priority
-                                                ? _getPriorityColor(priority)
-                                                : Theme.of(context).colorScheme.onSurface,
-                                            fontWeight: _priority == priority
-                                                ? FontWeight.bold
-                                                : FontWeight.w500,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+          const SizedBox(width: 12),
+          Text(msg,
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+        ]),
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.lgBR),
+        margin: const EdgeInsets.all(16),
+      );
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Theme.of(context).brightness == Brightness.dark
-              ? Brightness.light
-              : Brightness.dark,
+          statusBarIconBrightness:
+              dark ? Brightness.light : Brightness.dark,
         ),
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_rounded,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          icon: Icon(Iconsax.arrow_left_2, color: cs.onSurface),
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.pop(context);
@@ -660,36 +153,31 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         ),
         title: Text(
           _isEditing ? 'Edit Expense' : 'Add Expense',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
+          style: AppTypography.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: cs.onSurface,
             letterSpacing: -0.5,
-            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
             child: TextButton.icon(
-              onPressed: _saveExpense,
+              onPressed: _save,
               icon: Icon(
-                _isEditing ? Icons.update_rounded : Icons.save_rounded,
-                size: 20,
-              ),
-              label: Text(
-                _isEditing ? 'Update' : 'Save',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+                  _isEditing ? Iconsax.refresh : Iconsax.save_2,
+                  size: 18),
+              label: Text(_isEditing ? 'Update' : 'Save'),
               style: TextButton.styleFrom(
-                foregroundColor: Colors.purple,
-                backgroundColor: Colors.purple.withOpacity(0.1),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    borderRadius: AppRadius.mdBR),
+                textStyle: AppTypography.labelLarge
+                    .copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -700,15 +188,354 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildExpenseDetailsCard(),
-              _buildCategoryCard(),
-              _buildPriorityCard(),
+              _DetailsCard(
+                dark: dark,
+                titleController: _titleController,
+                amountController: _amountController,
+                descriptionController: _descriptionController,
+              ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 16),
+              _CategoryCard(
+                dark: dark,
+                selected: _selectedCategory,
+                categories: _categories,
+                icons: _categoryIcons,
+                onSelect: (c) => setState(() => _selectedCategory = c),
+              )
+                  .animate(delay: 60.ms)
+                  .fadeIn(duration: 350.ms)
+                  .slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 16),
+              _PriorityCard(
+                dark: dark,
+                priority: _priority,
+                priorityColor: _priorityColor,
+                priorityLabel: _priorityLabel,
+                onSelect: (p) => setState(() => _priority = p),
+              )
+                  .animate(delay: 120.ms)
+                  .fadeIn(duration: 350.ms)
+                  .slideY(begin: 0.1, end: 0),
               const SizedBox(height: 40),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Details card ──────────────────────────────────────────────────────────────
+
+class _DetailsCard extends StatelessWidget {
+  final bool dark;
+  final TextEditingController titleController;
+  final TextEditingController amountController;
+  final TextEditingController descriptionController;
+
+  const _DetailsCard({
+    required this.dark,
+    required this.titleController,
+    required this.amountController,
+    required this.descriptionController,
+  });
+
+  InputDecoration _input(BuildContext context, String label, String hint,
+      IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+      border: OutlineInputBorder(borderRadius: AppRadius.lgBR),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppRadius.lgBR,
+        borderSide: BorderSide(
+          color: dark ? AppColors.darkBorder : AppColors.border,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppRadius.lgBR,
+        borderSide:
+            const BorderSide(color: AppColors.primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: AppRadius.lgBR,
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: AppRadius.lgBR,
+        borderSide: const BorderSide(color: AppColors.error, width: 2),
+      ),
+      filled: true,
+      fillColor:
+          dark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
+      labelStyle: AppTypography.bodyMedium.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant),
+      hintStyle: AppTypography.bodyMedium.copyWith(
+          color: Theme.of(context)
+              .colorScheme
+              .onSurfaceVariant
+              .withValues(alpha: 0.6)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _FormCard(
+      dark: dark,
+      icon: Iconsax.wallet_2,
+      title: 'Expense Details',
+      child: Column(
+        children: [
+          TextFormField(
+            controller: titleController,
+            style: AppTypography.bodyMedium,
+            decoration: _input(
+                context, 'Expense Title', 'e.g. Lunch at KFC', Iconsax.text),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Title is required' : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: amountController,
+            style: AppTypography.bodyMedium,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: _input(context, 'Amount (₵)', '0.00',
+                Iconsax.money_2),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Amount is required';
+              if (double.tryParse(v) == null) return 'Enter a valid number';
+              if (double.parse(v) <= 0) return 'Must be greater than 0';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: descriptionController,
+            style: AppTypography.bodyMedium,
+            maxLines: 2,
+            decoration: _input(context, 'Description (Optional)',
+                'Add more details...', Iconsax.note),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Category card ─────────────────────────────────────────────────────────────
+
+class _CategoryCard extends StatelessWidget {
+  final bool dark;
+  final String selected;
+  final List<String> categories;
+  final Map<String, IconData> icons;
+  final ValueChanged<String> onSelect;
+
+  const _CategoryCard({
+    required this.dark,
+    required this.selected,
+    required this.categories,
+    required this.icons,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _FormCard(
+      dark: dark,
+      icon: Iconsax.category,
+      title: 'Category',
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: categories.map((cat) {
+          final isSelected = cat == selected;
+          final color = AppColors.categoryColor(cat);
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onSelect(cat);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? color.withValues(alpha: 0.15)
+                    : Colors.transparent,
+                borderRadius: AppRadius.mdBR,
+                border: Border.all(
+                  color: isSelected
+                      ? color
+                      : (dark ? AppColors.darkBorder : AppColors.border),
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icons[cat] ?? Iconsax.category,
+                    size: 15,
+                    color: isSelected
+                        ? color
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    cat,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: isSelected
+                          ? color
+                          : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ── Priority card ─────────────────────────────────────────────────────────────
+
+class _PriorityCard extends StatelessWidget {
+  final bool dark;
+  final int priority;
+  final Color Function(int) priorityColor;
+  final String Function(int) priorityLabel;
+  final ValueChanged<int> onSelect;
+
+  const _PriorityCard({
+    required this.dark,
+    required this.priority,
+    required this.priorityColor,
+    required this.priorityLabel,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _FormCard(
+      dark: dark,
+      icon: Iconsax.flag_2,
+      title: 'Priority Level',
+      child: Row(
+        children: [1, 2, 3].map((p) {
+          final isSelected = priority == p;
+          final color = priorityColor(p);
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onSelect(p);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    borderRadius: AppRadius.mdBR,
+                    border: Border.all(
+                      color: isSelected
+                          ? color
+                          : (dark ? AppColors.darkBorder : AppColors.border),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      if (isSelected)
+                        Icon(Iconsax.tick_circle,
+                            color: color, size: 18)
+                      else
+                        Icon(Iconsax.record_circle,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            size: 18),
+                      const SizedBox(height: 4),
+                      Text(
+                        priorityLabel(p),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: isSelected
+                              ? color
+                              : Theme.of(context).colorScheme.onSurface,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ── Shared form card shell ────────────────────────────────────────────────────
+
+class _FormCard extends StatelessWidget {
+  final bool dark;
+  final IconData icon;
+  final String title;
+  final Widget child;
+
+  const _FormCard({
+    required this.dark,
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: AppRadius.xlBR,
+        border: Border.all(
+            color: dark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: AppShadows.level2(dark: dark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: AppRadius.smBR,
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(title, style: AppTypography.titleMedium),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
       ),
     );
   }

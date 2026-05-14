@@ -1,20 +1,24 @@
+import 'package:iconsax/iconsax.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import '../models/theme_model.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_shadows.dart';
+import '../core/theme/app_typography.dart';
+import '../core/widgets/loading_shimmer.dart';
 import '../services/database_service.dart';
 
 class DemographicsScreen extends StatefulWidget {
-
-  const DemographicsScreen({Key? key}) : super(key: key);
+  const DemographicsScreen({super.key});
 
   @override
-  _DemographicsScreenState createState() => _DemographicsScreenState();
+  State<DemographicsScreen> createState() => _DemographicsScreenState();
 }
 
 class _DemographicsScreenState extends State<DemographicsScreen>
-    with TickerProviderStateMixin {
-  // Statistics
+    with SingleTickerProviderStateMixin {
   int _totalTasks = 0;
   int _completedTasks = 0;
   int _pendingTasks = 0;
@@ -24,83 +28,51 @@ class _DemographicsScreenState extends State<DemographicsScreen>
   Map<String, double> _categoryTotals = {};
   bool _isLoading = true;
 
-  late AnimationController _animationController;
-  late AnimationController _progressAnimationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _slideAnimation;
-  late Animation<double> _progressAnimation;
+  late AnimationController _progressCtrl;
+  late Animation<double> _progressAnim;
 
   @override
   void initState() {
     super.initState();
-
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _progressAnimationController = AnimationController(
+    _progressCtrl = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-      ),
-    );
-
-    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.2, 0.8, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _progressAnimationController,
-        curve: Curves.elasticOut,
-      ),
-    );
-
-    _loadAnalyticsData();
+    _progressAnim = CurvedAnimation(
+        parent: _progressCtrl, curve: Curves.easeOutCubic);
+    _load();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _progressAnimationController.dispose();
+    _progressCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadAnalyticsData() async {
+  Future<void> _load() async {
     setState(() => _isLoading = true);
-
     try {
-      final tasks = await DatabaseService.instance.loadTasks();
-      final expenses = await DatabaseService.instance.loadExpenses();
-      final totalAmount = await DatabaseService.instance.getTotalExpenses();
-      final monthlyAmount = await DatabaseService.instance.getMonthlyExpenses();
-      final categories = await DatabaseService.instance.getExpensesByCategory();
+      final totalAmount =
+          await DatabaseService.instance.getTotalExpenses();
+      final monthlyAmount =
+          await DatabaseService.instance.getMonthlyExpenses();
+      final categories =
+          await DatabaseService.instance.getExpensesByCategory();
       final db = Provider.of<DatabaseService>(context, listen: false);
-
-
+      if (!mounted) return;
       setState(() {
         _totalTasks = db.tasks.length;
-        _completedTasks = db.tasks.where((task) => task.isCompleted).length;
-        _pendingTasks = db.tasks.where((task) => !task.isCompleted).length;
+        _completedTasks = db.tasks.where((t) => t.isCompleted).length;
+        _pendingTasks = db.tasks.where((t) => !t.isCompleted).length;
         _totalExpenses = db.expenses.length;
         _totalExpenseAmount = totalAmount;
         _monthlyExpenseAmount = monthlyAmount;
         _categoryTotals = categories;
         _isLoading = false;
       });
-
-      _animationController.forward();
-      _progressAnimationController.forward();
+      _progressCtrl.forward(from: 0);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading analytics: $e')),
@@ -108,754 +80,611 @@ class _DemographicsScreenState extends State<DemographicsScreen>
     }
   }
 
-  Widget _buildOverviewCards() {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildMiniCard(
-                    'Total Items',
-                    '${_totalTasks + _totalExpenses}',
-                    Icons.inventory_rounded,
-                    Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMiniCard(
-                    'Completion Rate',
-                    '${_totalTasks > 0 ? ((_completedTasks / _totalTasks) * 100).toInt() : 0}%',
-                    Icons.trending_up_rounded,
-                    Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMiniCard(
-                    'Total Spent',
-                    '₵${_totalExpenseAmount.toStringAsFixed(0)}',
-                    Icons.account_balance_wallet_rounded,
-                    Colors.purple,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  // ── Insight helpers ────────────────────────────────────────────────────────
 
-  Widget _buildMiniCard(String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTaskAnalytics() {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value * 1.2),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 20),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).shadowColor.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.task_alt_rounded, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Task Analytics',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildProgressBar(
-                          'Completed',
-                          _completedTasks,
-                          _totalTasks,
-                          Colors.green,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildProgressBar(
-                          'Pending',
-                          _pendingTasks,
-                          _totalTasks,
-                          Colors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildExpenseAnalytics() {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value * 1.4),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 20),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).shadowColor.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.account_balance_wallet_rounded, color: Colors.purple),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Expense Analytics',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Total Expenses',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
-                            ),
-                            AnimatedBuilder(
-                              animation: _progressAnimation,
-                              builder: (context, child) {
-                                final animatedTotal = _totalExpenseAmount * _progressAnimation.value;
-                                return Text(
-                                  '₵${animatedTotal.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.purple,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'This Month',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
-                            ),
-                            Text(
-                              '₵${_monthlyExpenseAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Total Records',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
-                            ),
-                            Text(
-                              '$_totalExpenses',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryBreakdown() {
-    if (_categoryTotals.isEmpty) return const SizedBox.shrink();
-
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value * 1.6),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 20),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).shadowColor.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.pie_chart_rounded, color: Colors.orange),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Category Breakdown',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ..._categoryTotals.entries.take(5).map((entry) {
-                    final percentage = (_totalExpenseAmount > 0)
-                        ? (entry.value / _totalExpenseAmount) * 100
-                        : 0.0;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      color: _getCategoryColor(entry.key),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    entry.key,
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                '₵${entry.value.toStringAsFixed(2)} (${percentage.toStringAsFixed(1)}%)',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          AnimatedBuilder(
-                            animation: _progressAnimation,
-                            builder: (context, child) {
-                              return LinearProgressIndicator(
-                                value: (percentage / 100) * _progressAnimation.value,
-                                backgroundColor: Colors.grey.withOpacity(0.2),
-                                valueColor: AlwaysStoppedAnimation(_getCategoryColor(entry.key)),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildProductivityInsights() {
-    final completionRate = _totalTasks > 0 ? (_completedTasks / _totalTasks) * 100 : 0.0;
-    final avgExpensePerRecord = _totalExpenses > 0 ? _totalExpenseAmount / _totalExpenses : 0.0;
-
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _slideAnimation.value * 1.8),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 20),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.lightbulb_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Productivity Insights',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInsightItem(
-                    '📊',
-                    'Task Completion Rate',
-                    '${completionRate.toStringAsFixed(1)}% - ${_getCompletionInsight(completionRate)}',
-                  ),
-                  _buildInsightItem(
-                    '💰',
-                    'Average Expense',
-                    '₵${avgExpensePerRecord.toStringAsFixed(2)} per record',
-                  ),
-                  _buildInsightItem(
-                    '📈',
-                    'Most Expensive Category',
-                    _getMostExpensiveCategory(),
-                  ),
-                  _buildInsightItem(
-                    '🎯',
-                    'Productivity Score',
-                    '${_getProductivityScore().toStringAsFixed(0)}/100 - ${_getProductivityLevel()}',
-                  ),
-                  _buildInsightItem(
-                    '📅',
-                    'Usage Pattern',
-                    _getUsagePattern(),
-                  ),
-                  _buildInsightItem(
-                    '🏆',
-                    'Achievement Status',
-                    _getAchievementStatus(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildInsightItem(String emoji, String title, String description) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressBar(String label, int value, int total, Color color) {
-    final percentage = total > 0 ? (value / total) : 0.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-            Text(
-              '$value',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        AnimatedBuilder(
-          animation: _progressAnimation,
-          builder: (context, child) {
-            return LinearProgressIndicator(
-              value: percentage * _progressAnimation.value,
-              backgroundColor: Colors.grey.withOpacity(0.2),
-              valueColor: AlwaysStoppedAnimation(color),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Color _getCategoryColor(String category) {
-    final colors = {
-      'Food & Dining': Colors.orange,
-      'Transportation': Colors.blue,
-      'Shopping': Colors.purple,
-      'Entertainment': Colors.red,
-      'Bills & Utilities': Colors.green,
-      'Healthcare': Colors.teal,
-      'Education': Colors.indigo,
-      'Travel': Colors.amber,
-      'Other': Colors.grey,
-    };
-    return colors[category] ?? Colors.grey;
-  }
-
-  String _getCompletionInsight(double rate) {
+  String _completionInsight(double rate) {
     if (rate >= 80) return 'Excellent productivity!';
     if (rate >= 60) return 'Good progress';
     if (rate >= 40) return 'Room for improvement';
     return 'Focus on completing tasks';
   }
 
-  String _getMostExpensiveCategory() {
+  String _mostExpensiveCategory() {
     if (_categoryTotals.isEmpty) return 'No expenses recorded';
-
-    final maxEntry = _categoryTotals.entries.reduce(
-          (a, b) => a.value > b.value ? a : b,
-    );
-    return '${maxEntry.key} (₵${maxEntry.value.toStringAsFixed(2)})';
+    final max = _categoryTotals.entries.reduce((a, b) => a.value > b.value ? a : b);
+    return '${max.key} (₵${max.value.toStringAsFixed(2)})';
   }
 
-  double _getProductivityScore() {
+  double _productivityScore() {
     double score = 0;
-
-    // Task completion contributes 60%
-    if (_totalTasks > 0) {
-      score += (_completedTasks / _totalTasks) * 60;
-    }
-
-    // Having both tasks and expenses contributes 20%
-    if (_totalTasks > 0 && _totalExpenses > 0) {
-      score += 20;
-    }
-
-    // Consistent usage (having multiple records) contributes 20%
-    if ((_totalTasks + _totalExpenses) >= 10) {
-      score += 20;
-    } else if ((_totalTasks + _totalExpenses) >= 5) {
-      score += 10;
-    }
-
+    if (_totalTasks > 0) score += (_completedTasks / _totalTasks) * 60;
+    if (_totalTasks > 0 && _totalExpenses > 0) score += 20;
+    final total = _totalTasks + _totalExpenses;
+    if (total >= 10) score += 20;
+    else if (total >= 5) score += 10;
     return score;
   }
 
-  String _getProductivityLevel() {
-    final score = _getProductivityScore();
-    if (score >= 80) return 'Highly Productive';
-    if (score >= 60) return 'Productive';
-    if (score >= 40) return 'Moderately Active';
+  String _productivityLevel() {
+    final s = _productivityScore();
+    if (s >= 80) return 'Highly Productive';
+    if (s >= 60) return 'Productive';
+    if (s >= 40) return 'Moderately Active';
     return 'Getting Started';
   }
 
-  String _getUsagePattern() {
-    final totalItems = _totalTasks + _totalExpenses;
-    if (totalItems >= 50) return 'Power User - Very Active';
-    if (totalItems >= 20) return 'Regular User - Consistent';
-    if (totalItems >= 10) return 'Casual User - Moderate';
-    if (totalItems >= 5) return 'New User - Getting Started';
-    return 'Beginner - Just Started';
+  String _usagePattern() {
+    final total = _totalTasks + _totalExpenses;
+    if (total >= 50) return 'Power User — Very Active';
+    if (total >= 20) return 'Regular User — Consistent';
+    if (total >= 10) return 'Casual User — Moderate';
+    if (total >= 5) return 'New User — Getting Started';
+    return 'Beginner — Just Started';
   }
 
-  String _getAchievementStatus() {
-    if (_completedTasks >= 50) return 'Task Master - 50+ completed tasks!';
-    if (_completedTasks >= 25) return 'Task Expert - 25+ completed tasks';
-    if (_completedTasks >= 10) return 'Task Achiever - 10+ completed tasks';
-    if (_completedTasks >= 5) return 'Task Starter - 5+ completed tasks';
+  String _achievementStatus() {
+    if (_completedTasks >= 50) return 'Task Master — 50+ tasks done!';
+    if (_completedTasks >= 25) return 'Task Expert — 25+ tasks done';
+    if (_completedTasks >= 10) return 'Task Achiever — 10+ tasks done';
+    if (_completedTasks >= 5) return 'Task Starter — 5+ tasks done';
     return 'Just Getting Started';
   }
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+    final completionRate =
+        _totalTasks > 0 ? (_completedTasks / _totalTasks) * 100.0 : 0.0;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Theme.of(context).brightness == Brightness.dark
-              ? Brightness.light
-              : Brightness.dark,
+          statusBarIconBrightness:
+              dark ? Brightness.light : Brightness.dark,
         ),
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_rounded,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          icon: Icon(Iconsax.arrow_left_2, color: cs.onSurface),
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.pop(context);
           },
         ),
         title: Text(
-          'Analytics & Demographics',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
+          'Analytics',
+          style: AppTypography.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: cs.onSurface,
             letterSpacing: -0.5,
-            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.refresh_rounded,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+            icon: const Icon(Iconsax.refresh_2, color: AppColors.primary),
             onPressed: () {
               HapticFeedback.lightImpact();
-              _loadAnalyticsData();
+              _load();
             },
           ),
         ],
       ),
       body: _isLoading
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              ),
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Analyzing your data...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      )
+          ? const LoadingShimmer()
           : RefreshIndicator(
-        onRefresh: _loadAnalyticsData,
-        color: Theme.of(context).colorScheme.primary,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              // Header Description
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.orange.shade400,
-                      Colors.deepOrange.shade500,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
+              onRefresh: _load,
+              color: AppColors.primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                child: Column(
                   children: [
-                    Icon(
-                      Icons.analytics_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    // ── Hero ─────────────────────────────────────────────
+                    _HeroBanner()
+                        .animate()
+                        .fadeIn(duration: 400.ms)
+                        .slideY(begin: 0.1, end: 0),
+                    const SizedBox(height: 20),
+
+                    // ── Overview row ──────────────────────────────────────
+                    Row(
+                      children: [
+                        _MiniStat(
+                            'Total Items',
+                            '${_totalTasks + _totalExpenses}',
+                            Iconsax.box,
+                            AppColors.primary,
+                            dark),
+                        const SizedBox(width: 12),
+                        _MiniStat(
+                            'Completion',
+                            '${completionRate.toInt()}%',
+                            Iconsax.trend_up,
+                            AppColors.success,
+                            dark),
+                        const SizedBox(width: 12),
+                        _MiniStat(
+                            'Total Spent',
+                            '₵${_totalExpenseAmount.toStringAsFixed(0)}',
+                            Iconsax.wallet_2,
+                            AppColors.accent,
+                            dark),
+                      ],
+                    )
+                        .animate(delay: 60.ms)
+                        .fadeIn(duration: 350.ms)
+                        .slideY(begin: 0.1, end: 0),
+                    const SizedBox(height: 20),
+
+                    // ── Task analytics ────────────────────────────────────
+                    _AnalyticsCard(
+                      dark: dark,
+                      icon: Iconsax.task_square,
+                      iconColor: AppColors.primary,
+                      title: 'Task Analytics',
+                      child: Row(
                         children: [
-                          const Text(
-                            'Detailed Analytics',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: _AnimatedBar(
+                              label: 'Completed',
+                              value: _completedTasks,
+                              total: _totalTasks,
+                              color: AppColors.success,
+                              animation: _progressAnim,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Insights into your productivity patterns',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: _AnimatedBar(
+                              label: 'Pending',
+                              value: _pendingTasks,
+                              total: _totalTasks,
+                              color: AppColors.warning,
+                              animation: _progressAnim,
                             ),
                           ),
                         ],
                       ),
-                    ),
+                    )
+                        .animate(delay: 120.ms)
+                        .fadeIn(duration: 350.ms)
+                        .slideY(begin: 0.1, end: 0),
+                    const SizedBox(height: 20),
+
+                    // ── Expense analytics ─────────────────────────────────
+                    _AnalyticsCard(
+                      dark: dark,
+                      icon: Iconsax.wallet_2,
+                      iconColor: AppColors.accent,
+                      title: 'Expense Analytics',
+                      child: Row(
+                        children: [
+                          _ExpenseFigure('Total',
+                              _totalExpenseAmount, AppColors.error, _progressAnim),
+                          _ExpenseFigure('This Month',
+                              _monthlyExpenseAmount, AppColors.success, null),
+                          _ExpenseFigure('Records',
+                              _totalExpenses.toDouble(), AppColors.primary, null,
+                              isInt: true),
+                        ],
+                      ),
+                    )
+                        .animate(delay: 180.ms)
+                        .fadeIn(duration: 350.ms)
+                        .slideY(begin: 0.1, end: 0),
+                    const SizedBox(height: 20),
+
+                    // ── Category breakdown ────────────────────────────────
+                    if (_categoryTotals.isNotEmpty) ...[
+                      _AnalyticsCard(
+                        dark: dark,
+                        icon: Iconsax.chart_21,
+                        iconColor: AppColors.warning,
+                        title: 'Category Breakdown',
+                        child: Column(
+                          children:
+                              _categoryTotals.entries.take(5).map((e) {
+                            final pct = _totalExpenseAmount > 0
+                                ? e.value / _totalExpenseAmount
+                                : 0.0;
+                            final color = AppColors.categoryColor(e.key);
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: color,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(e.key,
+                                            style: AppTypography.bodySmall
+                                                .copyWith(
+                                                    fontWeight:
+                                                        FontWeight.w600)),
+                                      ),
+                                      Text(
+                                        '₵${e.value.toStringAsFixed(2)} '
+                                        '(${(pct * 100).toStringAsFixed(1)}%)',
+                                        style: AppTypography.labelSmall
+                                            .copyWith(
+                                                color: cs.onSurfaceVariant),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  AnimatedBuilder(
+                                    animation: _progressAnim,
+                                    builder: (_, __) =>
+                                        ClipRRect(
+                                          borderRadius: AppRadius.fullBR,
+                                          child: LinearProgressIndicator(
+                                            value: pct * _progressAnim.value,
+                                            minHeight: 6,
+                                            backgroundColor: color
+                                                .withValues(alpha: 0.12),
+                                            valueColor:
+                                                AlwaysStoppedAnimation(color),
+                                          ),
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      )
+                          .animate(delay: 240.ms)
+                          .fadeIn(duration: 350.ms)
+                          .slideY(begin: 0.1, end: 0),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // ── Insights ──────────────────────────────────────────
+                    _AnalyticsCard(
+                      dark: dark,
+                      icon: Iconsax.lamp_on,
+                      iconColor: AppColors.primary,
+                      title: 'Productivity Insights',
+                      isGradient: true,
+                      child: Column(
+                        children: [
+                          _InsightRow('Task Completion',
+                              '${completionRate.toStringAsFixed(1)}% — ${_completionInsight(completionRate)}'),
+                          _InsightRow('Avg Expense',
+                              _totalExpenses > 0
+                                  ? '₵${(_totalExpenseAmount / _totalExpenses).toStringAsFixed(2)} per record'
+                                  : 'No expenses yet'),
+                          _InsightRow('Top Category',
+                              _mostExpensiveCategory()),
+                          _InsightRow('Productivity',
+                              '${_productivityScore().toStringAsFixed(0)}/100 — ${_productivityLevel()}'),
+                          _InsightRow('Usage', _usagePattern()),
+                          _InsightRow('Achievement',
+                              _achievementStatus()),
+                        ],
+                      ),
+                    )
+                        .animate(delay: 300.ms)
+                        .fadeIn(duration: 350.ms)
+                        .slideY(begin: 0.1, end: 0),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+            ),
+    );
+  }
+}
 
-              _buildOverviewCards(),
-              const SizedBox(height: 20),
-              _buildTaskAnalytics(),
-              _buildExpenseAnalytics(),
-              _buildCategoryBreakdown(),
-              _buildProductivityInsights(),
+// ── Hero banner ───────────────────────────────────────────────────────────────
+
+class _HeroBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF8C00), Color(0xFFFF4500)],
+        ),
+        borderRadius: AppRadius.xlBR,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF8C00).withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Iconsax.chart_1,
+              color: Colors.white, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Detailed Analytics',
+                    style: AppTypography.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+                Text(
+                  'Insights into your productivity patterns',
+                  style: AppTypography.roboto(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.85)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Mini stat ─────────────────────────────────────────────────────────────────
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final bool dark;
+
+  const _MiniStat(this.label, this.value, this.icon, this.color, this.dark);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: AppRadius.lgBR,
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: AppTypography.poppins(
+                  fontSize: 14, fontWeight: FontWeight.w800, color: color),
+            ),
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Analytics card shell ──────────────────────────────────────────────────────
+
+class _AnalyticsCard extends StatelessWidget {
+  final bool dark;
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final Widget child;
+  final bool isGradient;
+
+  const _AnalyticsCard({
+    required this.dark,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.child,
+    this.isGradient = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: isGradient
+            ? LinearGradient(colors: [
+                AppColors.primary.withValues(alpha: 0.07),
+                AppColors.accent.withValues(alpha: 0.07),
+              ])
+            : null,
+        color: isGradient ? null : (dark ? AppColors.darkSurface : AppColors.surface),
+        borderRadius: AppRadius.xlBR,
+        border: Border.all(
+            color: isGradient
+                ? AppColors.primary.withValues(alpha: 0.2)
+                : (dark ? AppColors.darkBorder : AppColors.border)),
+        boxShadow: isGradient ? null : AppShadows.level2(dark: dark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: AppRadius.smBR,
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Text(title, style: AppTypography.titleMedium),
             ],
           ),
+          const SizedBox(height: 18),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// ── Animated progress bar ─────────────────────────────────────────────────────
+
+class _AnimatedBar extends StatelessWidget {
+  final String label;
+  final int value;
+  final int total;
+  final Color color;
+  final Animation<double> animation;
+
+  const _AnimatedBar({
+    required this.label,
+    required this.value,
+    required this.total,
+    required this.color,
+    required this.animation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = total > 0 ? value / total : 0.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: AppTypography.bodySmall
+                    .copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              '$value',
+              style: AppTypography.bodySmall
+                  .copyWith(color: color, fontWeight: FontWeight.w700),
+            ),
+          ],
         ),
+        const SizedBox(height: 8),
+        AnimatedBuilder(
+          animation: animation,
+          builder: (_, __) => ClipRRect(
+            borderRadius: AppRadius.fullBR,
+            child: LinearProgressIndicator(
+              value: pct * animation.value,
+              minHeight: 8,
+              backgroundColor: color.withValues(alpha: 0.12),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Expense figure ────────────────────────────────────────────────────────────
+
+class _ExpenseFigure extends StatelessWidget {
+  final String label;
+  final double value;
+  final Color color;
+  final Animation<double>? animation;
+  final bool isInt;
+
+  const _ExpenseFigure(this.label, this.value, this.color, this.animation,
+      {this.isInt = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 4),
+          animation != null
+              ? AnimatedBuilder(
+                  animation: animation!,
+                  builder: (_, __) {
+                    final v = value * animation!.value;
+                    return Text(
+                      isInt ? '${v.toInt()}' : '₵${v.toStringAsFixed(2)}',
+                      style: AppTypography.amountSmall.copyWith(color: color),
+                    );
+                  },
+                )
+              : Text(
+                  isInt
+                      ? '${value.toInt()}'
+                      : '₵${value.toStringAsFixed(2)}',
+                  style: AppTypography.amountSmall.copyWith(color: color),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Insight row ───────────────────────────────────────────────────────────────
+
+class _InsightRow extends StatelessWidget {
+  final String title;
+  final String description;
+
+  const _InsightRow(this.title, this.description);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: AppTypography.bodySmall
+                        .copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  description,
+                  style: AppTypography.bodySmall.copyWith(
+                      color:
+                          Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

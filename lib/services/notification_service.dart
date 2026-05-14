@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -13,13 +15,16 @@ class NotificationService  extends ChangeNotifier{
   NotificationService._constructor();
 
   Future<void> init() async {
-    // Initialize time zones
+    // Timezone — must succeed before any scheduling
     tz.initializeTimeZones();
+    try {
+      final tzInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+    } catch (e) {
+      print('Timezone init error: $e');
+    }
 
-    // Android initialization settings - Use your app icon
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    // iOS initialization settings
+    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
     const iosSettings = DarwinInitializationSettings(
       requestSoundPermission: true,
       requestBadgePermission: true,
@@ -29,28 +34,17 @@ class NotificationService  extends ChangeNotifier{
       defaultPresentSound: true,
     );
 
-    // Combined initialization settings
-    const settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    // Initialize the plugin
+    // Core plugin init — must succeed for anything to work
     await _notifications.initialize(
-      settings,
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // Create notification categories for iOS
-    await _createIOSNotificationCategories();
-
-    // Create notification channels for Android
-    await _createAndroidNotificationChannels();
-
-    // Request permissions after initialization
-    await _requestPermissions();
-
-    print('NotificationService initialized successfully');
+    // Channel creation and permissions are non-critical individually
+    try { await _createIOSNotificationCategories(); } catch (_) {}
+    try { await _createAndroidNotificationChannels(); } catch (_) {}
+    // Permissions run in the background — failures are logged inside _requestPermissions
+    _requestPermissions();
   }
 
   // Handle notification tap and actions
@@ -122,28 +116,29 @@ class NotificationService  extends ChangeNotifier{
           AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidImplementation != null) {
-        // Create alarm channel with maximum priority and custom sound
+        // New channel IDs force Android to recreate channels with correct settings.
+        // Old channels (task_alarms/task_reminders) had a non-existent sound file
+        // cached permanently by Android, causing silent notifications.
         final alarmChannel = AndroidNotificationChannel(
-          'task_alarms',
-          'Task Alarms',
+          'promptus_alarms',
+          'Promptus Alarms',
           description: 'Alarm-style notifications for task reminders',
           importance: Importance.max,
           playSound: true,
           enableVibration: true,
           enableLights: true,
           ledColor: const Color.fromARGB(255, 255, 0, 0),
-          vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
-          sound: const RawResourceAndroidNotificationSound('alarm_sound'),
+          vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
         );
 
-        // Create regular reminder channel
-        const reminderChannel = AndroidNotificationChannel(
-          'task_reminders',
-          'Task Reminders',
-          description: 'Regular notifications for task reminders',
-          importance: Importance.high,
+        final reminderChannel = AndroidNotificationChannel(
+          'promptus_reminders',
+          'Promptus Reminders',
+          description: 'Notifications for task and note reminders',
+          importance: Importance.max,
           playSound: true,
           enableVibration: true,
+          vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
         );
 
         await androidImplementation.createNotificationChannel(alarmChannel);
@@ -154,37 +149,75 @@ class NotificationService  extends ChangeNotifier{
     }
   }
 
-  // Request permissions for both Android and iOS
+  // Request permissions for both Android and iOS.
+  // Each request is isolated so a single failure never blocks the rest.
   Future<bool> _requestPermissions() async {
     bool permissionGranted = false;
 
     if (Platform.isAndroid) {
-      // Request Android permissions
-      final androidImplementation = _notifications
-          .resolvePlatformSpecificImplementation<
+      final impl = _notifications.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
 
-      if (androidImplementation != null) {
-        permissionGranted = await androidImplementation.requestPermission() ?? false;
-        print('Android notification permission granted: $permissionGranted');
+      if (impl != null) {
+        // Basic notification permission (Android 13+)
+        try {
+          permissionGranted = await impl.requestNotificationsPermission() ?? false;
+        } catch (e) {
+          print('Notification permission error: $e');
+        }
+
+        // Exact alarm permission — Android 12 (API 31-32) only; API 33+ uses USE_EXACT_ALARM
+        try {
+          final canExact = await impl.canScheduleExactNotifications() ?? true;
+          if (!canExact) await impl.requestExactAlarmsPermission();
+        } catch (e) {
+          print('Exact alarm permission error: $e');
+        }
+
+        // Full-screen intent permission — Android 14+ only; no-op on lower versions
+        try {
+          await impl.requestFullScreenIntentPermission();
+        } catch (e) {
+          print('Full screen intent permission error: $e');
+        }
+
+        // Battery optimization exclusion — lets alarms fire when app is killed on OEM devices
+        try {
+          final status = await Permission.ignoreBatteryOptimizations.status;
+          if (!status.isGranted) {
+            await Permission.ignoreBatteryOptimizations.request();
+          }
+        } catch (e) {
+          print('Battery optimization permission error: $e');
+        }
       }
     } else if (Platform.isIOS) {
-      // Request iOS permissions
-      final iosImplementation = _notifications
-          .resolvePlatformSpecificImplementation<
+      final iosImpl = _notifications.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
-
-      if (iosImplementation != null) {
-        permissionGranted = await iosImplementation.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        ) ?? false;
-        print('iOS notification permission granted: $permissionGranted');
+      if (iosImpl != null) {
+        try {
+          permissionGranted = await iosImpl.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          ) ?? false;
+        } catch (e) {
+          print('iOS permission error: $e');
+        }
       }
     }
 
     return permissionGranted;
+  }
+
+  // Returns true if exact alarm scheduling is available on this device.
+  // On Android 13+ with USE_EXACT_ALARM it's always true.
+  // On Android 12 it requires the runtime SCHEDULE_EXACT_ALARM grant.
+  Future<bool> _canScheduleExact() async {
+    if (!Platform.isAndroid) return true;
+    final impl = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    return await impl?.canScheduleExactNotifications() ?? true;
   }
 
   // Public method to request permissions
@@ -259,25 +292,27 @@ class NotificationService  extends ChangeNotifier{
       print('Current time: $now');
       print('Time difference: ${scheduledTime.difference(now).inSeconds} seconds');
 
-      // Android notification details for regular notifications with custom icon
+      // Use alarm audio stream + fullScreenIntent so reminders always popup and ring.
       const androidDetails = AndroidNotificationDetails(
-        'task_reminders',
-        'Task Reminders',
-        channelDescription: 'Regular notifications for task reminders',
-        importance: Importance.high,
-        priority: Priority.high,
+        'promptus_reminders',
+        'Promptus Reminders',
+        channelDescription: 'Notifications for task and note reminders',
+        importance: Importance.max,
+        priority: Priority.max,
         showWhen: true,
         enableVibration: true,
         playSound: true,
-        icon: '@mipmap/ic_launcher', // Use your custom app icon
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+        icon: '@drawable/ic_notification',
+        visibility: NotificationVisibility.public,
+        category: AndroidNotificationCategory.alarm,
+        fullScreenIntent: true,
       );
 
-      // iOS notification details for regular notifications
       const iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
-        sound: 'custom_sound.wav',
       );
 
       // Combined notification details
@@ -286,7 +321,7 @@ class NotificationService  extends ChangeNotifier{
         iOS: iosDetails,
       );
 
-      // Schedule the notification
+      final canExact = await _canScheduleExact();
       await _notifications.zonedSchedule(
         id,
         title,
@@ -295,7 +330,9 @@ class NotificationService  extends ChangeNotifier{
         details,
         uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: canExact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
         payload: payload,
       );
 
@@ -325,17 +362,16 @@ class NotificationService  extends ChangeNotifier{
         }
       }
 
-      // Android notification details with custom icon
       const androidDetails = AndroidNotificationDetails(
-        'task_reminders',
-        'Task Reminders',
-        channelDescription: 'Notifications for task reminders',
+        'promptus_reminders',
+        'Promptus Reminders',
+        channelDescription: 'Notifications for task and note reminders',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: true,
         enableVibration: true,
         playSound: true,
-        icon: '@mipmap/ic_launcher', // Use your custom app icon
+        icon: '@drawable/ic_notification', // Use your custom app icon
       );
 
       // iOS notification details
@@ -403,13 +439,10 @@ class NotificationService  extends ChangeNotifier{
     final permissionsGranted = await arePermissionsGranted();
     print('Permissions granted: $permissionsGranted');
 
-    bool hasPermissions = permissionsGranted;
-
     if (!permissionsGranted) {
       print('Requesting permissions...');
       final granted = await requestPermissions();
       print('Permission request result: $granted');
-      hasPermissions = granted;
     }
 
     // Show immediate test notification
@@ -561,10 +594,9 @@ class NotificationService  extends ChangeNotifier{
       print('Current time: $now');
       print('Time difference: ${scheduledTime.difference(now).inSeconds} seconds');
 
-      // Android notification details with maximum priority and full-screen intent
       final androidDetails = AndroidNotificationDetails(
-        'task_alarms',
-        'Task Alarms',
+        'promptus_alarms',
+        'Promptus Alarms',
         channelDescription: 'Alarm-style notifications for task reminders',
         importance: Importance.max,
         priority: Priority.max,
@@ -572,15 +604,13 @@ class NotificationService  extends ChangeNotifier{
         enableVibration: true,
         playSound: true,
         audioAttributesUsage: AudioAttributesUsage.alarm,
-        icon: '@mipmap/ic_launcher', // Use your custom app icon
-        sound: const RawResourceAndroidNotificationSound('alarm_sound'),
+        icon: '@drawable/ic_notification',
         fullScreenIntent: true,
         category: AndroidNotificationCategory.alarm,
         visibility: NotificationVisibility.public,
         ongoing: true,
         autoCancel: false,
-        usesChronometer: false,
-        timeoutAfter: 60000, // Auto dismiss after 1 minute
+        timeoutAfter: 60000,
         actions: <AndroidNotificationAction>[
           AndroidNotificationAction(
             'dismiss_$id',
@@ -595,8 +625,6 @@ class NotificationService  extends ChangeNotifier{
             showsUserInterface: true,
           ),
         ],
-        styleInformation: const BigTextStyleInformation(''),
-        additionalFlags: Int32List.fromList(<int>[4]), // FLAG_INSISTENT for repeating sound
       );
 
       // iOS notification details with built-in alarm sound (PROVEN TO WORK)
@@ -616,7 +644,7 @@ class NotificationService  extends ChangeNotifier{
         iOS: iosDetails,
       );
 
-      // Schedule the notification
+      final canExact = await _canScheduleExact();
       await _notifications.zonedSchedule(
         id,
         title,
@@ -625,7 +653,9 @@ class NotificationService  extends ChangeNotifier{
         details,
         uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: canExact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
         payload: payload,
       );
 

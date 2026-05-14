@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/task_model.dart';
 import '../models/expense_model.dart';
+import '../models/note_model.dart';
 
 class DatabaseService extends ChangeNotifier {
   // Singleton instance (so the same DB is used everywhere)
@@ -15,10 +16,14 @@ class DatabaseService extends ChangeNotifier {
   // Internal caches (to trigger UI updates on change)
   List<Task> _tasks = [];
   List<Expense> _expenses = [];
+  List<NoteFolder> _folders = [];
+  List<Note> _notes = [];
 
   // Getters to expose data
   List<Task> get tasks => _tasks;
   List<Expense> get expenses => _expenses;
+  List<NoteFolder> get folders => _folders;
+  List<Note> get notes => _notes;
 
   // Database getter
   Future<Database> get database async {
@@ -34,7 +39,7 @@ class DatabaseService extends ChangeNotifier {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -59,6 +64,28 @@ class DatabaseService extends ChangeNotifier {
             priority INTEGER NOT NULL DEFAULT 1
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE note_folders(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            colorValue INTEGER NOT NULL DEFAULT ${0xFF6366F1},
+            createdAt INTEGER NOT NULL
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE notes(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            folderId INTEGER,
+            title TEXT NOT NULL,
+            content TEXT,
+            createdAt INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL,
+            reminderTime INTEGER,
+            isPinned INTEGER NOT NULL DEFAULT 0
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -71,6 +98,28 @@ class DatabaseService extends ChangeNotifier {
               category TEXT NOT NULL,
               createdAt INTEGER NOT NULL,
               priority INTEGER NOT NULL DEFAULT 1
+            )
+          ''');
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE note_folders(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              colorValue INTEGER NOT NULL DEFAULT ${0xFF6366F1},
+              createdAt INTEGER NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE notes(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              folderId INTEGER,
+              title TEXT NOT NULL,
+              content TEXT,
+              createdAt INTEGER NOT NULL,
+              updatedAt INTEGER NOT NULL,
+              reminderTime INTEGER,
+              isPinned INTEGER NOT NULL DEFAULT 0
             )
           ''');
         }
@@ -89,12 +138,12 @@ class DatabaseService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future addTask(Task task) async {
+  Future<int> addTask(Task task) async {
     final db = await database;
-    await db.insert('tasks', task.toMap());
+    final id = await db.insert('tasks', task.toMap());
     await loadTasks();
     notifyListeners();
-    return task.id;
+    return id;
   }
 
   Future<void> updateTask(Task task) async {
@@ -187,6 +236,79 @@ class DatabaseService extends ChangeNotifier {
   }
 
   // ───────────────────────────────
+  // NOTES — FOLDER METHODS
+  // ───────────────────────────────
+
+  Future<void> loadFolders() async {
+    final db = await database;
+    final data = await db.query('note_folders', orderBy: 'createdAt ASC');
+    _folders = data.map((e) => NoteFolder.fromMap(e)).toList();
+    notifyListeners();
+  }
+
+  Future<int> addFolder(NoteFolder folder) async {
+    final db = await database;
+    final id = await db.insert('note_folders', folder.toMap());
+    await loadFolders();
+    return id;
+  }
+
+  Future<void> updateFolder(NoteFolder folder) async {
+    final db = await database;
+    await db.update('note_folders', folder.toMap(),
+        where: 'id = ?', whereArgs: [folder.id]);
+    await loadFolders();
+  }
+
+  Future<void> deleteFolder(int id) async {
+    final db = await database;
+    // Move notes from this folder to General (folderId = null)
+    await db.update('notes', {'folderId': null},
+        where: 'folderId = ?', whereArgs: [id]);
+    await db.delete('note_folders', where: 'id = ?', whereArgs: [id]);
+    await loadFolders();
+    await loadNotes();
+  }
+
+  // ───────────────────────────────
+  // NOTES — NOTE METHODS
+  // ───────────────────────────────
+
+  Future<void> loadNotes() async {
+    final db = await database;
+    final data = await db.query('notes',
+        orderBy: 'isPinned DESC, updatedAt DESC');
+    _notes = data.map((e) => Note.fromMap(e)).toList();
+    notifyListeners();
+  }
+
+  Future<int> addNote(Note note) async {
+    final db = await database;
+    final id = await db.insert('notes', note.toMap());
+    await loadNotes();
+    return id;
+  }
+
+  Future<void> updateNote(Note note) async {
+    final db = await database;
+    await db.update('notes', note.toMap(),
+        where: 'id = ?', whereArgs: [note.id]);
+    await loadNotes();
+  }
+
+  Future<void> deleteNote(int id) async {
+    final db = await database;
+    await db.delete('notes', where: 'id = ?', whereArgs: [id]);
+    await loadNotes();
+  }
+
+  List<Note> notesInFolder(int? folderId) => _notes
+      .where((n) => n.folderId == folderId)
+      .toList();
+
+  int noteCount(int? folderId) => notesInFolder(folderId).length;
+
+  // ───────────────────────────────
   // RESET & DELETE
   // ───────────────────────────────
 
@@ -195,10 +317,15 @@ class DatabaseService extends ChangeNotifier {
     await db.transaction((txn) async {
       await txn.delete('tasks');
       await txn.delete('expenses');
-      await txn.delete('sqlite_sequence', where: "name IN ('tasks', 'expenses')");
+      await txn.delete('notes');
+      await txn.delete('note_folders');
+      await txn.delete('sqlite_sequence',
+          where: "name IN ('tasks', 'expenses', 'notes', 'note_folders')");
     });
     await loadTasks();
     await loadExpenses();
+    await loadFolders();
+    await loadNotes();
     notifyListeners();
   }
 
@@ -216,6 +343,8 @@ class DatabaseService extends ChangeNotifier {
 
     _tasks = [];
     _expenses = [];
+    _folders = [];
+    _notes = [];
     notifyListeners();
   }
 

@@ -1,5 +1,10 @@
+import 'package:iconsax/iconsax.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_shadows.dart';
+import '../core/theme/app_typography.dart';
 import '../models/expense_model.dart';
 
 class ExpenseItem extends StatelessWidget {
@@ -8,158 +13,54 @@ class ExpenseItem extends StatelessWidget {
   final VoidCallback onEdit;
 
   const ExpenseItem({
-    Key? key,
+    super.key,
     required this.expense,
     required this.onDelete,
     required this.onEdit,
-  }) : super(key: key);
+  });
 
-  Color _getCategoryColor(String category) {
-    final colors = {
-      'Food & Dining': Colors.orange,
-      'Transportation': Colors.blue,
-      'Shopping': Colors.purple,
-      'Entertainment': Colors.red,
-      'Bills & Utilities': Colors.green,
-      'Healthcare': Colors.teal,
-      'Education': Colors.indigo,
-      'Travel': Colors.amber,
-      'Other': Colors.grey,
-    };
-    return colors[category] ?? Colors.grey;
-  }
+  String _priorityLabel(int p) => ['', 'Low', 'Medium', 'High'][p.clamp(1, 3)];
 
-  IconData _getCategoryIcon(String category) {
-    final icons = {
-      'Food & Dining': Icons.restaurant_rounded,
-      'Transportation': Icons.directions_car_rounded,
-      'Shopping': Icons.shopping_bag_rounded,
-      'Entertainment': Icons.movie_rounded,
-      'Bills & Utilities': Icons.receipt_long_rounded,
-      'Healthcare': Icons.local_hospital_rounded,
-      'Education': Icons.school_rounded,
-      'Travel': Icons.flight_rounded,
-      'Other': Icons.category_rounded,
-    };
-    return icons[category] ?? Icons.category_rounded;
-  }
+  Color _priorityColor(int p) => p == 3
+      ? AppColors.error
+      : p == 2
+          ? AppColors.warning
+          : AppColors.success;
 
-  String _getPriorityText(int priority) {
-    switch (priority) {
-      case 1:
-        return 'Low';
-      case 2:
-        return 'Medium';
-      case 3:
-        return 'High';
-      default:
-        return 'Low';
-    }
-  }
-
-  Color _getPriorityColor(int priority) {
-    switch (priority) {
-      case 1:
-        return Colors.green;
-      case 2:
-        return Colors.orange;
-      case 3:
-        return Colors.red;
-      default:
-        return Colors.green;
-    }
-  }
-
-  void _showOptionsBottomSheet(BuildContext context) {
+  void _showOptions(BuildContext context) {
     HapticFeedback.lightImpact();
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.edit_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 20,
-                ),
-              ),
-              title: const Text('Edit Expense'),
-              onTap: () {
-                Navigator.pop(context);
-                onEdit();
-              },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.delete_rounded,
-                  color: Colors.red,
-                  size: 20,
-                ),
-              ),
-              title: const Text('Delete Expense'),
-              onTap: () {
-                Navigator.pop(context);
-                _showDeleteConfirmation(context);
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+      builder: (_) => _OptionsSheet(onEdit: onEdit, onDelete: () {
+        _confirm(context);
+      }),
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context) {
+  void _confirm(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Expense'),
-        content: Text('Are you sure you want to delete "${expense.title}"?'),
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.xlBR),
+        title: Text('Delete Expense', style: AppTypography.titleLarge),
+        content: Text(
+          'Delete "${expense.title}"? This cannot be undone.',
+          style: AppTypography.bodyMedium,
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               onDelete();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.mdBR),
             ),
             child: const Text('Delete'),
           ),
@@ -170,156 +71,264 @@ class ExpenseItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _showOptionsBottomSheet(context),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _getCategoryColor(expense.category).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final catColor = AppColors.categoryColor(expense.category);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: AppRadius.xlBR,
+        border: Border.all(
+          color: dark ? AppColors.darkBorder : AppColors.border,
+        ),
+        boxShadow: AppShadows.level2(dark: dark),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: AppRadius.xlBR,
+        child: InkWell(
+          onTap: () => _showOptions(context),
+          borderRadius: AppRadius.xlBR,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Category icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: catColor.withValues(alpha: 0.12),
+                    borderRadius: AppRadius.mdBR,
+                  ),
+                  child: Icon(_categoryIcon(expense.category),
+                      color: catColor, size: 22),
                 ),
-                child: Icon(
-                  _getCategoryIcon(expense.category),
-                  color: _getCategoryColor(expense.category),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            expense.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _getPriorityColor(expense.priority).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _getPriorityText(expense.priority),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: _getPriorityColor(expense.priority),
+                const SizedBox(width: 14),
+                // Text body
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              expense.title,
+                              style: AppTypography.titleMedium.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    if (expense.description.isNotEmpty) ...[
-                      Text(
-                        expense.description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 8),
+                          _PriorityBadge(
+                            label: _priorityLabel(expense.priority),
+                            color: _priorityColor(expense.priority),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
-                    ],
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _getCategoryColor(expense.category).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            expense.category,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _getCategoryColor(expense.category),
+                      Row(
+                        children: [
+                          _CategoryChip(
+                              label: expense.category, color: catColor),
+                          const Spacer(),
+                          Icon(Iconsax.calendar_1,
+                              size: 11,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${expense.createdAt.day}/${expense.createdAt.month}/${expense.createdAt.year}',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Amount
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '₵${expense.amount.toStringAsFixed(2)}',
+                      style: AppTypography.amountSmall.copyWith(
+                        color: AppColors.primary,
+                      ),
                     ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-
-                        Icon(
-                          Icons.access_time_rounded,
-                          size: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${expense.createdAt.day}/${expense.createdAt.month}/${expense.createdAt.year}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                          ),
-                        ),
-                      ],
-                    )
+                    const SizedBox(height: 4),
+                    Icon(Iconsax.more,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '₵${expense.amount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Icon(
-                    Icons.more_vert_rounded,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  IconData _categoryIcon(String cat) {
+    const m = {
+      'Food & Dining': Iconsax.shopping_cart,
+      'Transportation': Iconsax.car,
+      'Shopping': Iconsax.bag_2,
+      'Entertainment': Iconsax.music,
+      'Bills & Utilities': Iconsax.receipt_2,
+      'Healthcare': Iconsax.heart,
+      'Education': Iconsax.book_1,
+      'Travel': Iconsax.airplane,
+      'Other': Iconsax.category,
+    };
+    return m[cat] ?? Iconsax.category;
+  }
+}
+
+class _PriorityBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _PriorityBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: AppRadius.fullBR,
+        ),
+        child: Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _CategoryChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: AppRadius.fullBR,
+        ),
+        child: Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+}
+
+// ── Options bottom-sheet ──────────────────────────────────────────────────────
+
+class _OptionsSheet extends StatelessWidget {
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _OptionsSheet({required this.onEdit, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: AppRadius.xxlBR,
+        border: Border.all(
+            color: dark ? AppColors.darkBorder : AppColors.border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.3),
+              borderRadius: AppRadius.fullBR,
+            ),
+          ),
+          _SheetTile(
+            icon: Iconsax.edit,
+            label: 'Edit Expense',
+            color: AppColors.primary,
+            onTap: () {
+              Navigator.pop(context);
+              onEdit();
+            },
+          ),
+          _SheetTile(
+            icon: Iconsax.trash,
+            label: 'Delete Expense',
+            color: AppColors.error,
+            onTap: () {
+              Navigator.pop(context);
+              onDelete();
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SheetTile(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: AppRadius.mdBR,
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(label,
+            style:
+                AppTypography.titleMedium.copyWith(color: color)),
+        trailing: Icon(Iconsax.arrow_right_3,
+            size: 14, color: color.withValues(alpha: 0.5)),
+      );
 }
