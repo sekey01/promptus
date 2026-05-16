@@ -6,8 +6,8 @@ plugins {
 
 android {
     namespace = "com.example.promptus"
-    compileSdk = 35
-    ndkVersion = "27.0.12077973"
+    compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         // This is the key line that was missing!
@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.promptus"
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"

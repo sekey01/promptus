@@ -120,11 +120,16 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 800));
     _textController.forward();
 
-    // Initialize app services while animations play
-    _initializeAppServices();
+    // Initialize app services concurrently with remaining animation time
+    // This ensures navigation waits for services to be ready
+    final servicesFuture = _initializeAppServices();
 
     // Navigate to main screen after animations complete
     await Future.delayed(const Duration(milliseconds: 2500));
+
+    // Ensure services are initialized before navigating
+    await servicesFuture;
+
     _navigateToMainScreen();
   }
 

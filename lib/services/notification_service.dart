@@ -123,18 +123,39 @@ class NotificationService {
 
       if (androidImplementation != null) {
         // Create alarm channel with maximum priority and custom sound
-        final alarmChannel = AndroidNotificationChannel(
-          'task_alarms',
-          'Task Alarms',
-          description: 'Alarm-style notifications for task reminders',
-          importance: Importance.max,
-          playSound: true,
-          enableVibration: true,
-          enableLights: true,
-          ledColor: const Color.fromARGB(255, 255, 0, 0),
-          vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
-          sound: const RawResourceAndroidNotificationSound('alarm_sound'),
-        );
+        // Wrapped in try-catch so missing raw resource doesn't break everything
+        try {
+          final alarmChannel = AndroidNotificationChannel(
+            'task_alarms',
+            'Task Alarms',
+            description: 'Alarm-style notifications for task reminders',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+            enableLights: true,
+            ledColor: const Color.fromARGB(255, 255, 0, 0),
+            vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+            sound: const RawResourceAndroidNotificationSound('alarm_sound'),
+          );
+          await androidImplementation.createNotificationChannel(alarmChannel);
+          print('Android alarm notification channel created with custom sound');
+        } catch (e) {
+          print('Warning: Could not create alarm channel with custom sound: $e');
+          // Fallback: create alarm channel without custom sound
+          final alarmChannelFallback = AndroidNotificationChannel(
+            'task_alarms',
+            'Task Alarms',
+            description: 'Alarm-style notifications for task reminders',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+            enableLights: true,
+            ledColor: const Color.fromARGB(255, 255, 0, 0),
+            vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+          );
+          await androidImplementation.createNotificationChannel(alarmChannelFallback);
+          print('Android alarm notification channel created with default sound');
+        }
 
         // Create regular reminder channel
         const reminderChannel = AndroidNotificationChannel(
@@ -146,10 +167,9 @@ class NotificationService {
           enableVibration: true,
         );
 
-        await androidImplementation.createNotificationChannel(alarmChannel);
         await androidImplementation.createNotificationChannel(reminderChannel);
 
-        print('Android notification channels created with custom alarm sound');
+        print('Android notification channels created successfully');
       }
     }
   }
@@ -604,7 +624,7 @@ class NotificationService {
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
-        sound: 'Alarm.caf', // Use built-in iOS alarm sound that we know works
+        sound: 'Alarm.caf', // Built-in iOS alarm sound that we know works
         badgeNumber: 1,
         subtitle: 'Task Reminder',
         threadIdentifier: 'task_alarms',
